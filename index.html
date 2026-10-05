@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="gstyle.css" />
+    <script src="app.js" async></script>
+    <script src="scripts/json_renderer.js" async></script>
+  </head>
+  <body>
+    <div class="growth_main_container">
+      <div class="growth_header_container">
+        <div class="growth_logo_container">
+          <img class="growth_logo" src="images/growthAcademy.png" alt="Growth Academy Logo" />
+        </div>
+        <div class="growth_heading_container">
+          <h2 class="growth_heading">DataLayer Checker Plus</h2>
+        </div>
+        <div class="growth_settings_logo_container">
+          <img class="growth_settings_logo" src="images/settingsLogo.png" alt="Settings Logo" />
+        </div>
+      </div>
+      <div class="growth_data_container">
+        <div class="growth_right_eventdata_container">
+          <div class="growth_success_message_container">
+           <h5 id="growth_success_message">Sorry! No DataLayer Found &#128542</h5>
+            <ul class="list">
+              <li>To inspect the dataLayer in a Shopify store with <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels/custom-pixels" target="_blank">Custom Pixel</a> enabled, activate the "Shopify Custom Pixel DataLayer Checker" located on the settings page.</li>
+              <li>If dataLayer isn't visible in a non-Shopify store, check if "Shopify Custom Pixel DataLayer Checker" is enabled in settings page. If so, disable it and check again.</li>
+            </ul>
+          </div> 
+        </div>
+        <div class="growth_left_event_container">
+          <div class="growth_nav_container">
+            <h4 class="growth_side_nav_heading">Events</h4>
+          </div>
+          <div class="growth_side_nav_container"></div>
+        </div>
+      </div>
+      <div class="growth_settings growth_settings_display">
+        <div class="block">
+          <div>
+            <h2 class="title">Shopify Custom Pixel DataLayer Checker</h2>
+            <p class="sub_title">Custom Pixel is the official way of enabling dataLayer in Shopify Store. <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels" target="_blank">Learn More</a></p>
+          </div>
+          <div>
+            <input type="checkbox" name="topframe" id="topframe">
+          </div>
+        </div>
+         <div class="block">
+          <div>
+            <h2 class="title">GTM Injector</h2>
+            <p class="sub_title">Inject a Google Tag Manager container on pages you browse.</p>
+            <textarea class='gtmclass message_box' rows="5" cols="30"></textarea>
+          </div>
+          <div>
+            <input type="checkbox" name="growthid" id="growthid">
+          </div>
+        </div>
+        <div class="btn_container">
+         <button class="btn">Save</button>
+        </div>
+        <div class="message_container">
+          <p class="message">Settings Saved</p>
+          <div class="cross_sign">&#x271a</div>
+        </div> 
+      </div>
+    </div>    
+  </body>
+</html>
