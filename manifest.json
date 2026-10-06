@@ -19,12 +19,10 @@
       "32": "images/icon32.png",
       "48": "images/icon48.png"
    },
-   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmWwiMxZwV647eTBDNTEOLL+w4HWsnNLFMoVcyhCcdE6HVHECQ/CDzfN1T0a6KGwaGfi4SCrLrzyygKOkBhiKSKQta3xf/8eX31MKtjg8S7FYvbtDxPZqGV2D6osHPDkYxWb3TVbzpZACWNgdDZnw8SxUvad3d9EYSDQCVwf5F7JGadJuEjcqUjCEzoBWAkatHztUIeGcoCrXJmyPRrC7QHgDxvT/6Ea+eV8LnA9hvfsuHMhbbHYFp/yAvB0rDLPFF5xYzqDJpG9/t5+u4oMAo73GzxiGuZ48UjTCvZh23tA6rG3oxzvfgz2RpgwkC2a+DzbdFOLqIFoB0j5qFC2ZFQIDAQAB",
    "manifest_version": 3,
    "name": "DataLayer Checker Plus",
    "permissions": [ "scripting", "webNavigation", "storage", "clipboardWrite" ],
-   "update_url": "https://clients2.google.com/service/update2/crx",
-   "version": "1.0.3",
+   "version": "1.1.0",
    "web_accessible_resources": [ {
       "matches": [ "https://*/*" ],
       "resources": [ "scripts/vendor.js" ]
