@@ -7,6 +7,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         js: ["scripts/gtmcode.js"],
         runAt: "document_end",
         world: "MAIN",
+        allFrames: true,
       },
     ]);
 
@@ -16,6 +17,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         matches: ["<all_urls>"],
         js: ["scripts/bridge.js"],
         runAt: "document_end",
+        allFrames: true,
       },
     ]);
 

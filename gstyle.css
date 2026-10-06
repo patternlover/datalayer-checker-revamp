@@ -314,6 +314,36 @@ body {
     color: var(--main);
 }
 
+.seg-light {
+    background: #EEF3F2;
+}
+
+.seg-light .seg-btn {
+    color: var(--muted);
+}
+
+.seg-light .seg-btn:hover {
+    background: rgba(0, 69, 68, 0.08);
+}
+
+.seg-light .seg-btn.active {
+    background: var(--main);
+    color: var(--white);
+}
+
+.inject-target {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.inject-target-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
 .btn-copy-floating {
     position: absolute;
     right: 16px;

@@ -121,6 +121,7 @@ self.Flatted = (function (n) {
     eventsView: $("#events-view"),
     settingsView: $("#settings-view"),
     injectorToggle: $("#injector-toggle"),
+    injectTarget: $("#inject-target"),
     gtmCode: $("#gtm-code"),
     injectorCard: $("#injector-card"),
     saveBtn: $("#save-settings"),
@@ -387,11 +388,38 @@ self.Flatted = (function (n) {
     });
   }
 
+  function currentInjectTarget() {
+    const active = els.injectTarget.querySelector(".seg-btn.active");
+    return active ? active.dataset.target : "top";
+  }
+
+  function setTargetUI(target) {
+    els.injectTarget.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.target === target);
+    });
+  }
+
+  function injectScriptsIntoFrame(tabId, frameId) {
+    chrome.scripting.executeScript({ target: { tabId: tabId, frameIds: [frameId] }, files: ["scripts/gtmcode.js"], world: "MAIN" }).catch(() => {});
+    chrome.scripting.executeScript({ target: { tabId: tabId, frameIds: [frameId] }, files: ["scripts/bridge.js"] }).catch(() => {});
+  }
+
   function injectGtmIntoActiveTab() {
+    const target = currentInjectTarget();
     activeTabId((tabId) => {
       if (tabId == null) return;
-      chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["scripts/gtmcode.js"], world: "MAIN" }).catch(() => {});
-      chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["scripts/bridge.js"] }).catch(() => {});
+      chrome.webNavigation.getAllFrames({ tabId: tabId }, (frames) => {
+        if (!frames) {
+          if (target === "top") injectScriptsIntoFrame(tabId, 0);
+          return;
+        }
+        for (const frame of frames) {
+          const isTop = frame.frameId === 0;
+          const isSandbox = frame.url.includes("/sandbox/modern/") && !frame.url.includes("shopify-custom-pixel") && frame.frameType === "sub_frame";
+          const here = target === "pixel" ? isSandbox : isTop;
+          if (here) injectScriptsIntoFrame(tabId, frame.frameId);
+        }
+      });
     });
   }
 
@@ -411,6 +439,15 @@ self.Flatted = (function (n) {
     });
   });
 
+  els.injectTarget.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (btn.classList.contains("active")) return;
+      setTargetUI(btn.dataset.target);
+      await chrome.storage.sync.set({ injectTarget: btn.dataset.target });
+      if (els.injectorToggle.checked) injectGtmIntoActiveTab();
+    });
+  });
+
   els.injectorToggle.addEventListener("change", async () => {
     const on = els.injectorToggle.checked;
     refreshInjectorUI();
@@ -424,10 +461,11 @@ self.Flatted = (function (n) {
     if (els.injectorToggle.checked) injectGtmIntoActiveTab();
   });
 
-  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode"]);
+  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode", "injectTarget"]);
   const initialFrame = stored.frame === "iframe" ? "iframe" : "top_frame";
   topFrame = initialFrame === "top_frame";
   setEnvUI(initialFrame);
+  setTargetUI(stored.injectTarget === "pixel" ? "pixel" : "top");
   els.injectorToggle.checked = stored.gtmcodepush === true;
   els.gtmCode.value = typeof stored.gtmcode === "string" ? stored.gtmcode : "";
   refreshInjectorUI();

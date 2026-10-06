@@ -38,6 +38,9 @@
       return;
     }
 
+    // Custom pixel mirroring only makes sense in the top frame.
+    if (window.top !== window) return;
+
     if (data.event_source === "custom_pixel_dataLayer_replace") {
       if (Array.isArray(data.data)) window.dataLayer = data.data;
       return;

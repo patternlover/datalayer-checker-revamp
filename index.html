@@ -69,8 +69,15 @@
           <div class="card" id="injector-card">
             <div class="card-text">
               <h2>GTM Injector</h2>
-              <p>Inject a Google Tag Manager container on the pages you browse. Ricordati di disattivarlo a fine debug.</p>
-              <textarea id="gtm-code" class="gtm-textarea" rows="5" placeholder="<!-- Google Tag Manager --> ..."></textarea>
+            <p>Inject a Google Tag Manager container on the pages you browse. Ricordati di disattivarlo a fine debug.</p>
+            <div class="inject-target">
+              <span class="inject-target-label">Iniezione su</span>
+              <div id="inject-target" class="seg seg-light">
+                <button type="button" class="seg-btn" data-target="top">Top</button>
+                <button type="button" class="seg-btn" data-target="pixel">Pixel</button>
+              </div>
+            </div>
+            <textarea id="gtm-code" class="gtm-textarea" rows="5" placeholder="<!-- Google Tag Manager --> ..."></textarea>
             </div>
             <label class="switch">
               <input type="checkbox" id="injector-toggle" />
