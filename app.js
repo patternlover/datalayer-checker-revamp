@@ -114,7 +114,7 @@ self.Flatted = (function (n) {
     detailBody: $("#detail-body"),
     emptyState: $("#empty-state"),
     copyBtn: $("#copy-push"),
-    sourceChip: $("#source-chip"),
+    envChip: $("#env-chip"),
     injectorChip: $("#injector-chip"),
     settingsToggle: $("#settings-toggle"),
     settingsClose: $("#settings-close"),
@@ -192,18 +192,27 @@ self.Flatted = (function (n) {
 
   function renderSource(meta) {
     if (!meta || (!meta.url && !meta.host)) {
-      els.sourceChip.classList.add("is-hidden");
-      els.sourceChip.textContent = "";
+      els.envChip.classList.add("is-hidden");
+      els.envChip.textContent = "";
+      els.envChip.title = "";
       return;
     }
     let label;
-    if (meta.isShopifySandbox) label = "Shopify Custom Pixel";
-    else if (meta.isTop) label = "Top frame";
-    else label = "iframe";
-    if (meta.host) label += " · " + meta.host;
-    els.sourceChip.textContent = label;
-    els.sourceChip.title = meta.url || label;
-    els.sourceChip.classList.remove("is-hidden");
+    let cls;
+    if (meta.isShopifySandbox) {
+      label = "Shopify Pixel";
+      cls = "chip-env-pixel";
+    } else if (meta.isTop) {
+      label = "Top frame";
+      cls = "chip-env-top";
+    } else {
+      label = "iframe";
+      cls = "chip-env-top";
+    }
+    els.envChip.textContent = label;
+    els.envChip.title = (meta.host || "") + (meta.url ? "\n" + meta.url : "");
+    els.envChip.classList.remove("chip-env-top", "chip-env-pixel", "is-hidden");
+    els.envChip.classList.add(cls);
   }
 
   function selectEvent(position) {

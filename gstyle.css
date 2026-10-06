@@ -64,14 +64,20 @@ body {
     min-width: 0;
 }
 
-.brand-logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
-    background: var(--white);
-    padding: 2px;
-    object-fit: contain;
+.brand-mark {
+    width: 30px;
+    height: 30px;
     flex: 0 0 auto;
+    border-radius: 8px;
+    background: var(--accent-2);
+    display: grid;
+    place-items: center;
+}
+
+.brand-mark svg {
+    width: 16px;
+    height: 14px;
+    display: block;
 }
 
 .brand-title {
@@ -80,12 +86,6 @@ body {
     margin: 0;
     letter-spacing: 0.2px;
     white-space: nowrap;
-}
-
-.brand-sub {
-    font-size: 11px;
-    color: var(--secondary);
-    letter-spacing: 0.3px;
 }
 
 .header-actions {
@@ -243,6 +243,7 @@ body {
     background: var(--white);
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .detail-head {
@@ -282,48 +283,49 @@ body {
     text-overflow: ellipsis;
 }
 
-.detail-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 0 0 auto;
-}
-
-.chip-source {
+.chip-env-top {
     background: var(--secondary);
     color: var(--main);
-    max-width: 190px;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.btn-copy {
+.chip-env-pixel {
+    background: var(--accent-1);
+    color: var(--white);
+}
+
+.btn-copy-floating {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    z-index: 5;
     border: 0;
-    border-radius: 8px;
+    border-radius: 9px;
     background: var(--accent-1);
     color: var(--white);
     font: inherit;
     font-size: 12px;
     font-weight: 600;
-    padding: 7px 12px;
+    padding: 9px 16px;
     cursor: pointer;
+    box-shadow: 0 4px 14px rgba(155, 128, 255, 0.45);
     transition: filter 0.12s ease;
 }
 
-.btn-copy:hover {
+.btn-copy-floating:hover {
     filter: brightness(1.06);
 }
 
-.btn-copy:disabled {
+.btn-copy-floating:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 .detail-body {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 14px 16px;
+    padding: 14px 16px 58px;
 }
 
 .json {

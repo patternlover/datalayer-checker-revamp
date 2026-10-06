@@ -11,13 +11,15 @@
     <div class="app">
       <header class="app-header">
         <div class="brand">
-          <img class="brand-logo" src="images/growthAcademy.png" alt="Growth Academy" />
-          <div class="brand-text">
-            <h1 class="brand-title">DataLayer Checker Plus</h1>
-            <span class="brand-sub">Real-time dataLayer inspector</span>
-          </div>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 100 87" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="50,0 100,87 0,87" fill="#004544" />
+            </svg>
+          </span>
+          <h1 class="brand-title">DataLayer Checker Plus</h1>
         </div>
         <div class="header-actions">
+          <span id="env-chip" class="chip is-hidden"></span>
           <span id="injector-chip" class="chip chip-off" title="Stato GTM Injector">GTM Injector OFF</span>
           <button id="settings-toggle" class="icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni">
             <img src="images/settingsLogo.png" alt="" />
@@ -40,10 +42,6 @@
               <span id="detail-index" class="detail-index">–</span>
               <span id="detail-name" class="detail-name">Nessun evento</span>
             </div>
-            <div class="detail-actions">
-              <span id="source-chip" class="chip chip-source is-hidden"></span>
-              <button id="copy-push" class="btn-copy" type="button" disabled>Copia push</button>
-            </div>
           </div>
           <div id="detail-body" class="detail-body">
             <div id="empty-state" class="empty-state">
@@ -55,6 +53,7 @@
             </div>
             <pre id="detail-json" class="json is-hidden"></pre>
           </div>
+          <button id="copy-push" class="btn-copy-floating" type="button" disabled>Copia</button>
         </section>
       </main>
 
