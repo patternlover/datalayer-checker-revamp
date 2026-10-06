@@ -41,17 +41,17 @@
     // Custom pixel mirroring only makes sense in the top frame.
     if (window.top !== window) return;
 
-    if (data.event_source === "custom_pixel_dataLayer_replace") {
-      if (Array.isArray(data.data)) window.dataLayer = data.data;
-      return;
-    }
-
-    if (data.event_source === "customPixel") {
-      var first = data.data && data.data[0];
-      if (!first) return;
-      if (first.event === "gtm.dom" || first.event === "gtm.load") return;
+    if (data.event_source === "customPixel" || data.event_source === "customPixelSeed") {
+      var list;
+      if (data.event_source === "customPixelSeed") list = Array.isArray(data.data) ? data.data : [];
+      else list = data.data && data.data.length ? [data.data[0]] : [];
       window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push(first);
+      for (var i = 0; i < list.length; i++) {
+        var ev = list[i];
+        if (!ev || typeof ev !== "object") continue;
+        if (ev.event === "gtm.dom" || ev.event === "gtm.load") continue;
+        window.dataLayer.push(ev);
+      }
     }
   });
 

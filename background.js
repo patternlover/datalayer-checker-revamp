@@ -35,19 +35,32 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
+async function shouldMirror() {
+  const { frame, injectTarget, mirrorPixel } = await chrome.storage.sync.get(["frame", "injectTarget", "mirrorPixel"]);
+  if (mirrorPixel === "off") return false;
+  if (mirrorPixel === "on") return true;
+  return frame === "iframe" && injectTarget !== "pixel";
+}
+
+function isPixelSandboxFrame(frame) {
+  return frame.url.includes("/sandbox/modern/") && !frame.url.includes("shopify-custom-pixel") && frame.frameType === "sub_frame";
+}
+
+function injectMirrorIntoFrame(tabId, frameId) {
+  chrome.scripting
+    .executeScript({
+      target: { tabId: tabId, frameIds: [frameId] },
+      injectImmediately: true,
+      files: ["scripts/listener.js"],
+      world: "MAIN",
+    })
+    .catch(() => {});
+}
+
 chrome.webNavigation.onDOMContentLoaded.addListener(async (element) => {
-  let { frame } = await chrome.storage.sync.get(["frame"]);
-  if (element.url.includes("/sandbox/modern/") === true && element.url.includes("shopify-custom-pixel") === false && element.frameType === "sub_frame" && frame === "iframe") {
-    try {
-      chrome.scripting.executeScript({
-        target: { tabId: element.tabId, frameIds: [element.frameId] },
-        injectImmediately: true,
-        files: ["scripts/listener.js"],
-        world: "MAIN",
-      });
-    } catch (error) {
-      console.log(error);
-    }
+  if (!(await shouldMirror())) return;
+  if (isPixelSandboxFrame(element)) {
+    injectMirrorIntoFrame(element.tabId, element.frameId);
   }
 });
 
@@ -79,12 +92,34 @@ async function injectBannerAllTabs() {
   }
 }
 
+async function injectMirrorAllTabs() {
+  if (!(await shouldMirror())) return;
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch (error) {
+    return;
+  }
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https:\/\//.test(tab.url)) continue;
+    chrome.webNavigation.getAllFrames({ tabId: tab.id }, (frames) => {
+      if (!frames) return;
+      for (const frame of frames) {
+        if (isPixelSandboxFrame(frame)) injectMirrorIntoFrame(tab.id, frame.frameId);
+      }
+    });
+  }
+}
+
 chrome.runtime.onStartup.addListener(refreshGtmBadge);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync") return;
   if (changes.gtmcodepush) {
     refreshGtmBadge();
     injectBannerAllTabs();
+  }
+  if (changes.frame || changes.injectTarget || changes.mirrorPixel) {
+    injectMirrorAllTabs();
   }
 });
 refreshGtmBadge();

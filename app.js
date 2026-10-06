@@ -122,6 +122,7 @@ self.Flatted = (function (n) {
     settingsView: $("#settings-view"),
     injectorToggle: $("#injector-toggle"),
     injectTarget: $("#inject-target"),
+    mirrorPixel: $("#mirror-pixel"),
     gtmCode: $("#gtm-code"),
     injectorCard: $("#injector-card"),
     saveBtn: $("#save-settings"),
@@ -399,6 +400,12 @@ self.Flatted = (function (n) {
     });
   }
 
+  function setMirrorUI(mode) {
+    els.mirrorPixel.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.mirror === mode);
+    });
+  }
+
   function injectScriptsIntoFrame(tabId, frameId) {
     chrome.scripting.executeScript({ target: { tabId: tabId, frameIds: [frameId] }, files: ["scripts/gtmcode.js"], world: "MAIN" }).catch(() => {});
     chrome.scripting.executeScript({ target: { tabId: tabId, frameIds: [frameId] }, files: ["scripts/bridge.js"] }).catch(() => {});
@@ -448,6 +455,14 @@ self.Flatted = (function (n) {
     });
   });
 
+  els.mirrorPixel.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (btn.classList.contains("active")) return;
+      setMirrorUI(btn.dataset.mirror);
+      await chrome.storage.sync.set({ mirrorPixel: btn.dataset.mirror });
+    });
+  });
+
   els.injectorToggle.addEventListener("change", async () => {
     const on = els.injectorToggle.checked;
     refreshInjectorUI();
@@ -461,11 +476,12 @@ self.Flatted = (function (n) {
     if (els.injectorToggle.checked) injectGtmIntoActiveTab();
   });
 
-  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode", "injectTarget"]);
+  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode", "injectTarget", "mirrorPixel"]);
   const initialFrame = stored.frame === "iframe" ? "iframe" : "top_frame";
   topFrame = initialFrame === "top_frame";
   setEnvUI(initialFrame);
   setTargetUI(stored.injectTarget === "pixel" ? "pixel" : "top");
+  setMirrorUI(stored.mirrorPixel === "on" || stored.mirrorPixel === "off" ? stored.mirrorPixel : "auto");
   els.injectorToggle.checked = stored.gtmcodepush === true;
   els.gtmCode.value = typeof stored.gtmcode === "string" ? stored.gtmcode : "";
   refreshInjectorUI();
