@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataLayer Checker Plus</title>
+    <link rel="stylesheet" href="gstyle.css" />
+    <script src="app.js" async></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div class="brand">
+          <img class="brand-logo" src="images/growthAcademy.png" alt="Growth Academy" />
+          <div class="brand-text">
+            <h1 class="brand-title">DataLayer Checker Plus</h1>
+            <span class="brand-sub">Real-time dataLayer inspector</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <span id="injector-chip" class="chip chip-off" title="Stato GTM Injector">GTM Injector OFF</span>
+          <button id="settings-toggle" class="icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni">
+            <img src="images/settingsLogo.png" alt="" />
+          </button>
+        </div>
+      </header>
+
+      <main id="events-view" class="view">
+        <aside class="events-sidebar">
+          <div class="sidebar-head">
+            <h2>Events</h2>
+            <span id="events-count" class="count">0</span>
+          </div>
+          <div id="events-list" class="events-list"></div>
+        </aside>
+
+        <section class="detail">
+          <div class="detail-head">
+            <div class="detail-title-wrap">
+              <span id="detail-index" class="detail-index">–</span>
+              <span id="detail-name" class="detail-name">Nessun evento</span>
+            </div>
+            <div class="detail-actions">
+              <span id="source-chip" class="chip chip-source is-hidden"></span>
+              <button id="copy-push" class="btn-copy" type="button" disabled>Copia push</button>
+            </div>
+          </div>
+          <div id="detail-body" class="detail-body">
+            <div id="empty-state" class="empty-state">
+              <h3>Nessun dataLayer trovato</h3>
+              <ul>
+                <li>To inspect the dataLayer in a Shopify store with <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels/custom-pixels" target="_blank">Custom Pixel</a> enabled, activate the "Shopify Custom Pixel DataLayer Checker" located on the settings page.</li>
+                <li>If dataLayer isn't visible in a non-Shopify store, check if "Shopify Custom Pixel DataLayer Checker" is enabled in settings page. If so, disable it and check again.</li>
+              </ul>
+            </div>
+            <pre id="detail-json" class="json is-hidden"></pre>
+          </div>
+        </section>
+      </main>
+
+      <main id="settings-view" class="view is-hidden">
+        <div class="settings-head">
+          <h2>Impostazioni</h2>
+          <button id="settings-close" class="icon-btn" type="button" title="Chiudi" aria-label="Chiudi">✕</button>
+        </div>
+        <div class="settings-scroll">
+          <div class="card">
+            <div class="card-text">
+              <h2>Shopify Custom Pixel DataLayer Checker</h2>
+              <p>Custom Pixel is the official way of enabling dataLayer in a Shopify store. <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels" target="_blank">Learn more</a></p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="custom-pixel-toggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="card" id="injector-card">
+            <div class="card-text">
+              <h2>GTM Injector</h2>
+              <p>Inject a Google Tag Manager container on the pages you browse. Ricordati di disattivarlo a fine debug.</p>
+              <textarea id="gtm-code" class="gtm-textarea" rows="5" placeholder="<!-- Google Tag Manager --> ..."></textarea>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="injector-toggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="save-settings" class="btn-primary" type="button">Salva</button>
+        </div>
+      </main>
+
+      <div id="toast" class="toast">Impostazioni salvate</div>
+    </div>
+  </body>
+</html>
