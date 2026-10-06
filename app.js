@@ -131,6 +131,7 @@ self.Flatted = (function (n) {
   let currentData = [];
   let selectedIndex = -1;
   let selectedEvent = null;
+  let followNewest = true;
 
   const EVENT_LABELS = {
     "gtm.init_consent": "Consent Initialization",
@@ -267,7 +268,9 @@ self.Flatted = (function (n) {
 
   els.eventsList.addEventListener("click", (e) => {
     const row = e.target.closest(".event-row");
-    if (row) selectEvent(Number(row.dataset.index));
+    if (!row) return;
+    followNewest = false;
+    selectEvent(Number(row.dataset.index));
   });
 
   els.copyBtn.addEventListener("click", async () => {
@@ -307,7 +310,34 @@ self.Flatted = (function (n) {
     showToast("Impostazioni salvate");
   });
 
-  chrome.runtime.onMessage.addListener(function (request) {
+  function applyIncoming(parsed) {
+    const incoming = Array.isArray(parsed.dlData) ? parsed.dlData : [];
+    const mode = parsed.mode || "snapshot";
+    if (mode === "append") {
+      if (currentData.length !== parsed.startIndex) return;
+      if (!incoming.length) return;
+      currentData = currentData.concat(incoming);
+    } else {
+      currentData = incoming;
+      followNewest = true;
+    }
+    if (currentData.length > 500) {
+      currentData = currentData.slice(currentData.length - 500);
+    }
+    renderSource(parsed.meta || null);
+    renderEvents();
+    if (!currentData.length) {
+      resetDetail();
+      return;
+    }
+    if (followNewest || selectedIndex < 1 || selectedIndex > currentData.length) {
+      selectEvent(currentData.length);
+    } else {
+      selectEvent(selectedIndex);
+    }
+  }
+
+  function handleStreamMessage(request) {
     if (!request) return;
     let parsed;
     try {
@@ -316,14 +346,12 @@ self.Flatted = (function (n) {
       return;
     }
     if (!parsed || !parsed.dlData) return;
-    currentData = parsed.dlData;
-    renderSource(parsed.meta || null);
-    renderEvents();
-    if (currentData.length) {
-      selectEvent(currentData.length);
-    } else {
-      resetDetail();
-    }
+    applyIncoming(parsed);
+  }
+
+  chrome.runtime.onConnect.addListener(function (port) {
+    if (port.name !== "dlc-stream") return;
+    port.onMessage.addListener(handleStreamMessage);
   });
 
   const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode"]);
@@ -338,9 +366,8 @@ self.Flatted = (function (n) {
     topFrame = stored.frame === "top_frame" ? true : false;
   }
 
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (!tabs || !tabs[0]) return;
-    chrome.webNavigation.getAllFrames({ tabId: tabs[0].id }, (frames) => {
+  function injectCollector(tabId) {
+    chrome.webNavigation.getAllFrames({ tabId: tabId }, (frames) => {
       if (!frames) return;
       for (const frame of frames) {
         let shouldInject = false;
@@ -352,12 +379,23 @@ self.Flatted = (function (n) {
         if (shouldInject) {
           chrome.scripting
             .executeScript({
-              target: { tabId: tabs[0].id, frameIds: [frame.frameId] },
+              target: { tabId: tabId, frameIds: [frame.frameId] },
               files: ["scripts/content.js"],
             })
             .catch((error) => console.log(error));
         }
       }
+    });
+  }
+
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    if (tabs && tabs[0]) injectCollector(tabs[0].id);
+  });
+
+  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo) {
+    if (changeInfo.status !== "complete") return;
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (tabs && tabs[0] && tabs[0].id === tabId) injectCollector(tabId);
     });
   });
 })();

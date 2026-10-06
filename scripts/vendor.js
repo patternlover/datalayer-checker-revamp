@@ -100,6 +100,55 @@ self.Flatted = (function (n) {
   );
 })({});
 
-if (window.dataLayer) {
-  window.postMessage(Flatted.stringify({ event: "dataLayerData", dlData: window.dataLayer }), "*");
-}
+(function () {
+  if (self.__dlcStreamReady) return;
+  self.__dlcStreamReady = true;
+
+  var POLL_MS = 250;
+  var timer = null;
+  var ref = null;
+  var sent = 0;
+
+  function post(mode, items, startIndex) {
+    window.postMessage(Flatted.stringify({ event: "dataLayerData", mode: mode, dlData: items, startIndex: startIndex || 0 }), "*");
+  }
+
+  function tick() {
+    var dl = window.dataLayer || [];
+    if (dl !== ref) {
+      ref = dl;
+      sent = dl.length;
+      post("snapshot", dl.slice(0), 0);
+      return;
+    }
+    if (dl.length > sent) {
+      var items = dl.slice(sent);
+      sent = dl.length;
+      post("append", items, sent - items.length);
+    } else if (dl.length < sent) {
+      sent = dl.length;
+    }
+  }
+
+  function start() {
+    if (timer) return;
+    window.dataLayer = window.dataLayer || [];
+    ref = window.dataLayer;
+    sent = ref.length;
+    post("snapshot", ref.slice(0), 0);
+    timer = setInterval(tick, POLL_MS);
+  }
+
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window || !event.data || typeof event.data !== "object") return;
+    if (event.data.__dlc === "start") start();
+    else if (event.data.__dlc === "stop") stop();
+  });
+})();

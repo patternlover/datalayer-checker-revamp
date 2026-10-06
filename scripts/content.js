@@ -100,15 +100,16 @@ self.Flatted = (function (n) {
   );
 })({});
 
-//injectScripttest(gtmInjectScript);
-function injectScript(file_path, tag) {
-  var node = document.getElementsByTagName(tag)[0];
+function injectVendor(callback) {
+  var node = document.head || document.getElementsByTagName("head")[0];
   var script = document.createElement("script");
   script.setAttribute("type", "text/javascript");
-  script.setAttribute("src", file_path);
-  script.id = "growth_academy";
-  script.onload = () => {
-    document.querySelector("#growth_academy").remove();
+  script.setAttribute("src", chrome.runtime.getURL("scripts/vendor.js"));
+  script.id = "dlc_vendor";
+  script.onload = function () {
+    var el = document.getElementById("dlc_vendor");
+    if (el) el.remove();
+    callback();
   };
   node.appendChild(script);
 }
@@ -122,19 +123,44 @@ function isJsonString(str) {
   return true;
 }
 
-window.onmessage = (e) => {
-  if (isJsonString(e.data)) {
-    var dataLayer_data = Flatted.parse(e.data);
-    if (dataLayer_data.event === "dataLayerData" && dataLayer_data.dlData) {
-      dataLayer_data.meta = {
-        url: location.href,
-        host: location.host,
-        isTop: window.top === window,
-        isShopifySandbox: location.href.indexOf("/sandbox/modern/") !== -1,
-      };
-      chrome.runtime.sendMessage(Flatted.stringify(dataLayer_data));
+function startStream() {
+  window.postMessage({ __dlc: "start" }, "*");
+}
+
+if (window.__dlcPort) {
+  try {
+    window.__dlcPort.disconnect();
+  } catch (e) {}
+  window.__dlcPort = null;
+}
+
+window.__dlcPort = chrome.runtime.connect({ name: "dlc-stream" });
+window.__dlcPort.onDisconnect.addListener(function () {
+  window.postMessage({ __dlc: "stop" }, "*");
+  window.__dlcPort = null;
+});
+
+window.onmessage = function (e) {
+  if (!isJsonString(e.data)) return;
+  var dataLayer_data = Flatted.parse(e.data);
+  if (dataLayer_data.event === "dataLayerData" && dataLayer_data.dlData) {
+    dataLayer_data.meta = {
+      url: location.href,
+      host: location.host,
+      isTop: window.top === window,
+      isShopifySandbox: location.href.indexOf("/sandbox/modern/") !== -1,
+    };
+    if (window.__dlcPort) {
+      try {
+        window.__dlcPort.postMessage(Flatted.stringify(dataLayer_data));
+      } catch (err) {}
     }
   }
 };
 
-injectScript(chrome.runtime.getURL("scripts/vendor.js"), "head");
+if (window.__dlcVendorInjected) {
+  startStream();
+} else {
+  window.__dlcVendorInjected = true;
+  injectVendor(startStream);
+}
