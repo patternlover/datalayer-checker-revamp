@@ -114,13 +114,12 @@ self.Flatted = (function (n) {
     detailBody: $("#detail-body"),
     emptyState: $("#empty-state"),
     copyBtn: $("#copy-push"),
-    envChip: $("#env-chip"),
+    envSelect: $("#env-select"),
     injectorChip: $("#injector-chip"),
     settingsToggle: $("#settings-toggle"),
     settingsClose: $("#settings-close"),
     eventsView: $("#events-view"),
     settingsView: $("#settings-view"),
-    customPixelToggle: $("#custom-pixel-toggle"),
     injectorToggle: $("#injector-toggle"),
     gtmCode: $("#gtm-code"),
     injectorCard: $("#injector-card"),
@@ -132,6 +131,8 @@ self.Flatted = (function (n) {
   let selectedIndex = -1;
   let selectedEvent = null;
   let followNewest = true;
+  let topFrame = true;
+  let streamPorts = [];
 
   const EVENT_LABELS = {
     "gtm.init_consent": "Consent Initialization",
@@ -193,27 +194,14 @@ self.Flatted = (function (n) {
 
   function renderSource(meta) {
     if (!meta || (!meta.url && !meta.host)) {
-      els.envChip.classList.add("is-hidden");
-      els.envChip.textContent = "";
-      els.envChip.title = "";
+      els.envSelect.title = "";
       return;
     }
     let label;
-    let cls;
-    if (meta.isShopifySandbox) {
-      label = "Shopify Pixel";
-      cls = "chip-env-pixel";
-    } else if (meta.isTop) {
-      label = "Top frame";
-      cls = "chip-env-top";
-    } else {
-      label = "iframe";
-      cls = "chip-env-top";
-    }
-    els.envChip.textContent = label;
-    els.envChip.title = (meta.host || "") + (meta.url ? "\n" + meta.url : "");
-    els.envChip.classList.remove("chip-env-top", "chip-env-pixel", "is-hidden");
-    els.envChip.classList.add(cls);
+    if (meta.isShopifySandbox) label = "Shopify Custom Pixel";
+    else if (meta.isTop) label = "Top frame";
+    else label = "iframe";
+    els.envSelect.title = label + (meta.host ? " · " + meta.host : "") + (meta.url ? "\n" + meta.url : "");
   }
 
   function selectEvent(position) {
@@ -266,49 +254,12 @@ self.Flatted = (function (n) {
     els.emptyState.classList.remove("is-hidden");
   }
 
-  els.eventsList.addEventListener("click", (e) => {
-    const row = e.target.closest(".event-row");
-    if (!row) return;
-    followNewest = false;
-    selectEvent(Number(row.dataset.index));
-  });
-
-  els.copyBtn.addEventListener("click", async () => {
-    if (selectedEvent == null) return;
-    const text = "dataLayer.push(" + JSON.stringify(selectedEvent, null, 2) + ");";
-    const ok = await copyText(text);
-    showToast(ok ? "Push copiato!" : "Copia non riuscita");
-  });
-
-  function openSettings() {
-    els.eventsView.classList.add("is-hidden");
-    els.settingsView.classList.remove("is-hidden");
+  function clearEvents() {
+    currentData = [];
+    followNewest = true;
+    renderEvents();
+    resetDetail();
   }
-  function closeSettings() {
-    els.settingsView.classList.add("is-hidden");
-    els.eventsView.classList.remove("is-hidden");
-  }
-  els.settingsToggle.addEventListener("click", openSettings);
-  els.settingsClose.addEventListener("click", closeSettings);
-
-  function refreshInjectorUI() {
-    const on = els.injectorToggle.checked;
-    els.injectorCard.classList.toggle("is-on", on);
-    els.gtmCode.disabled = !on;
-    els.injectorChip.textContent = on ? "GTM Injector ON" : "GTM Injector OFF";
-    els.injectorChip.classList.toggle("chip-on", on);
-    els.injectorChip.classList.toggle("chip-off", !on);
-  }
-  els.injectorToggle.addEventListener("change", refreshInjectorUI);
-
-  els.saveBtn.addEventListener("click", async () => {
-    await chrome.storage.sync.set({
-      frame: els.customPixelToggle.checked ? "iframe" : "top_frame",
-      gtmcodepush: els.injectorToggle.checked,
-      gtmcode: els.gtmCode.value,
-    });
-    showToast("Impostazioni salvate");
-  });
 
   function applyIncoming(parsed) {
     const incoming = Array.isArray(parsed.dlData) ? parsed.dlData : [];
@@ -351,22 +302,70 @@ self.Flatted = (function (n) {
 
   chrome.runtime.onConnect.addListener(function (port) {
     if (port.name !== "dlc-stream") return;
+    streamPorts.push(port);
+    port.onDisconnect.addListener(function () {
+      streamPorts = streamPorts.filter((p) => p !== port);
+    });
     port.onMessage.addListener(handleStreamMessage);
   });
 
-  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode"]);
-  els.customPixelToggle.checked = stored.frame === "iframe";
-  els.injectorToggle.checked = stored.gtmcodepush === true;
-  els.gtmCode.value = typeof stored.gtmcode === "string" ? stored.gtmcode : "";
-  refreshInjectorUI();
-  resetDetail();
+  function stopStreams() {
+    streamPorts.forEach((port) => {
+      try {
+        port.disconnect();
+      } catch (e) {}
+    });
+    streamPorts = [];
+  }
 
-  var topFrame = true;
-  if (Object.keys(stored).includes("frame")) {
-    topFrame = stored.frame === "top_frame" ? true : false;
+  els.eventsList.addEventListener("click", (e) => {
+    const row = e.target.closest(".event-row");
+    if (!row) return;
+    followNewest = false;
+    selectEvent(Number(row.dataset.index));
+  });
+
+  els.copyBtn.addEventListener("click", async () => {
+    if (selectedEvent == null) return;
+    const text = "dataLayer.push(" + JSON.stringify(selectedEvent, null, 2) + ");";
+    const ok = await copyText(text);
+    showToast(ok ? "Push copiato!" : "Copia non riuscita");
+  });
+
+  function openSettings() {
+    els.eventsView.classList.add("is-hidden");
+    els.settingsView.classList.remove("is-hidden");
+  }
+  function closeSettings() {
+    els.settingsView.classList.add("is-hidden");
+    els.eventsView.classList.remove("is-hidden");
+  }
+  els.settingsToggle.addEventListener("click", openSettings);
+  els.settingsClose.addEventListener("click", closeSettings);
+
+  function refreshInjectorUI() {
+    const on = els.injectorToggle.checked;
+    els.injectorCard.classList.toggle("is-on", on);
+    els.gtmCode.disabled = !on;
+    els.injectorChip.textContent = on ? "GTM Injector ON" : "GTM Injector OFF";
+    els.injectorChip.classList.toggle("chip-on", on);
+    els.injectorChip.classList.toggle("chip-off", !on);
+  }
+
+  function setEnvUI(frame) {
+    els.envSelect.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.env === frame);
+    });
+  }
+
+  function activeTabId(callback) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      callback(tabs && tabs[0] ? tabs[0].id : null);
+    });
   }
 
   function injectCollector(tabId) {
+    if (tabId == null) return;
     chrome.webNavigation.getAllFrames({ tabId: tabId }, (frames) => {
       if (!frames) return;
       for (const frame of frames) {
@@ -388,14 +387,58 @@ self.Flatted = (function (n) {
     });
   }
 
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (tabs && tabs[0]) injectCollector(tabs[0].id);
+  function injectGtmIntoActiveTab() {
+    activeTabId((tabId) => {
+      if (tabId == null) return;
+      chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["scripts/gtmcode.js"], world: "MAIN" }).catch(() => {});
+      chrome.scripting.executeScript({ target: { tabId: tabId }, files: ["scripts/bridge.js"] }).catch(() => {});
+    });
+  }
+
+  function switchEnv(frame) {
+    topFrame = frame === "top_frame";
+    setEnvUI(frame);
+    clearEvents();
+    stopStreams();
+    chrome.storage.sync.set({ frame: frame });
+    activeTabId((tabId) => injectCollector(tabId));
+  }
+
+  els.envSelect.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.classList.contains("active")) return;
+      switchEnv(btn.dataset.env);
+    });
   });
+
+  els.injectorToggle.addEventListener("change", async () => {
+    const on = els.injectorToggle.checked;
+    refreshInjectorUI();
+    await chrome.storage.sync.set({ gtmcodepush: on });
+    if (on) injectGtmIntoActiveTab();
+  });
+
+  els.saveBtn.addEventListener("click", async () => {
+    await chrome.storage.sync.set({ gtmcode: els.gtmCode.value });
+    showToast("Codice salvato");
+    if (els.injectorToggle.checked) injectGtmIntoActiveTab();
+  });
+
+  const stored = await chrome.storage.sync.get(["frame", "gtmcodepush", "gtmcode"]);
+  const initialFrame = stored.frame === "iframe" ? "iframe" : "top_frame";
+  topFrame = initialFrame === "top_frame";
+  setEnvUI(initialFrame);
+  els.injectorToggle.checked = stored.gtmcodepush === true;
+  els.gtmCode.value = typeof stored.gtmcode === "string" ? stored.gtmcode : "";
+  refreshInjectorUI();
+  resetDetail();
+
+  activeTabId((tabId) => injectCollector(tabId));
 
   chrome.tabs.onUpdated.addListener(function (tabId, changeInfo) {
     if (changeInfo.status !== "complete") return;
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      if (tabs && tabs[0] && tabs[0].id === tabId) injectCollector(tabId);
+    activeTabId((activeId) => {
+      if (activeId === tabId) injectCollector(tabId);
     });
   });
 })();

@@ -19,7 +19,10 @@
           <h1 class="brand-title">DataLayer Checker Plus</h1>
         </div>
         <div class="header-actions">
-          <span id="env-chip" class="chip is-hidden"></span>
+          <div id="env-select" class="seg" role="group" aria-label="Ambiente dataLayer">
+            <button type="button" class="seg-btn" data-env="top_frame">Top</button>
+            <button type="button" class="seg-btn" data-env="iframe">Pixel</button>
+          </div>
           <span id="injector-chip" class="chip chip-off" title="Stato GTM Injector">GTM Injector OFF</span>
           <button id="settings-toggle" class="icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni">
             <img src="images/settingsLogo.png" alt="" />
@@ -47,8 +50,8 @@
             <div id="empty-state" class="empty-state">
               <h3>Nessun dataLayer trovato</h3>
               <ul>
-                <li>To inspect the dataLayer in a Shopify store with <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels/custom-pixels" target="_blank">Custom Pixel</a> enabled, activate the "Shopify Custom Pixel DataLayer Checker" located on the settings page.</li>
-                <li>If dataLayer isn't visible in a non-Shopify store, check if "Shopify Custom Pixel DataLayer Checker" is enabled in settings page. If so, disable it and check again.</li>
+                <li>Su uno store Shopify con <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels/custom-pixels" target="_blank">Custom Pixel</a> attivo, passa a "Pixel" nel selettore in alto.</li>
+                <li>Se il dataLayer non appare in uno store non-Shopify, torna su "Top" nel selettore e verifica di nuovo.</li>
               </ul>
             </div>
             <pre id="detail-json" class="json is-hidden"></pre>
@@ -63,17 +66,6 @@
           <button id="settings-close" class="icon-btn" type="button" title="Chiudi" aria-label="Chiudi">✕</button>
         </div>
         <div class="settings-scroll">
-          <div class="card">
-            <div class="card-text">
-              <h2>Shopify Custom Pixel DataLayer Checker</h2>
-              <p>Custom Pixel is the official way of enabling dataLayer in a Shopify store. <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels" target="_blank">Learn more</a></p>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="custom-pixel-toggle" />
-              <span class="slider"></span>
-            </label>
-          </div>
-
           <div class="card" id="injector-card">
             <div class="card-text">
               <h2>GTM Injector</h2>
@@ -87,11 +79,11 @@
           </div>
         </div>
         <div class="settings-foot">
-          <button id="save-settings" class="btn-primary" type="button">Salva</button>
+          <button id="save-settings" class="btn-primary" type="button">Salva codice</button>
         </div>
       </main>
 
-      <div id="toast" class="toast">Impostazioni salvate</div>
+      <div id="toast" class="toast">Salvato</div>
     </div>
   </body>
 </html>

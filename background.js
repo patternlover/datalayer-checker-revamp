@@ -18,6 +18,16 @@ chrome.runtime.onInstalled.addListener(async () => {
         runAt: "document_end",
       },
     ]);
+
+    chrome.scripting.registerContentScripts([
+      {
+        id: "banner-code",
+        matches: ["<all_urls>"],
+        js: ["scripts/banner.js"],
+        runAt: "document_end",
+        allFrames: false,
+      },
+    ]);
   } catch (error) {
     console.log(error);
   }
@@ -52,10 +62,27 @@ async function refreshGtmBadge() {
   }
 }
 
+async function injectBannerAllTabs() {
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch (error) {
+    return;
+  }
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https:\/\//.test(tab.url)) continue;
+    chrome.scripting
+      .executeScript({ target: { tabId: tab.id }, files: ["scripts/banner.js"] })
+      .catch(() => {});
+  }
+}
+
 chrome.runtime.onStartup.addListener(refreshGtmBadge);
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && changes.gtmcodepush) {
+  if (area !== "sync") return;
+  if (changes.gtmcodepush) {
     refreshGtmBadge();
+    injectBannerAllTabs();
   }
 });
 refreshGtmBadge();
