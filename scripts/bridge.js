@@ -3,12 +3,11 @@
     return window.top === window;
   }
 
-  function isSandboxFrame() {
-    try {
-      return window.top !== window && location.href.indexOf("/sandbox/modern/") !== -1;
-    } catch (e) {
-      return false;
-    }
+  function hostMatches(host, list) {
+    if (!host || !Array.isArray(list)) return false;
+    return list.some(function (domain) {
+      return host === domain || host.endsWith("." + domain);
+    });
   }
 
   function cleanGtmCode(gtmcode) {
@@ -20,30 +19,34 @@
   }
 
   async function sendGtmCode() {
-    var { gtmcode } = await chrome.storage.sync.get(["gtmcode"]);
-    var { gtmcodepush } = await chrome.storage.sync.get(["gtmcodepush"]);
-    var { injectTarget } = await chrome.storage.sync.get(["injectTarget"]);
-    if (gtmcodepush !== true || typeof gtmcode !== "string" || gtmcode === "") return;
+    if (!isTopFrame()) return;
 
-    var target = injectTarget === "pixel" ? "pixel" : "top";
-    var injectHere = target === "pixel" ? isSandboxFrame() : isTopFrame();
-    if (!injectHere) return;
+    var { gtmcode, gtmcodepush, gtmDomains } = await chrome.storage.sync.get(["gtmcode", "gtmcodepush", "gtmDomains"]);
+    if (gtmcodepush !== true) return;
+    if (typeof gtmcode !== "string" || gtmcode === "") return;
+    if (!hostMatches(location.hostname, gtmDomains)) return;
 
-    var position = target === "pixel" ? "body" : "head";
-    window.postMessage({ action: "setGTMCode", code: cleanGtmCode(gtmcode), position: position }, "*");
+    // Canale privato (evento DOM): il codice del container non passa da window.postMessage,
+    // quindi i listener "message" del sito non lo vedono.
+    document.dispatchEvent(new CustomEvent("__dlc_msg:isolated", { detail: JSON.stringify({ action: "setGTMCode", code: cleanGtmCode(gtmcode) }) }));
   }
 
   if (!window.__dlcBridgeReady) {
     window.__dlcBridgeReady = true;
 
-    window.addEventListener("message", function (event) {
-      if (event.source !== window || !event.data) return;
-      if (event.data.action === "gtmCodeReady") sendGtmCode();
+    document.addEventListener("__dlc_msg:main", function (event) {
+      var data;
+      try {
+        data = JSON.parse(event.detail);
+      } catch (e) {
+        return;
+      }
+      if (data && data.action === "gtmCodeReady") sendGtmCode();
     });
 
     chrome.storage.onChanged.addListener(function (changes, area) {
       if (area !== "sync") return;
-      if (changes.gtmcodepush || changes.gtmcode || changes.injectTarget) sendGtmCode();
+      if (changes.gtmcodepush || changes.gtmcode || changes.gtmDomains) sendGtmCode();
     });
   }
 

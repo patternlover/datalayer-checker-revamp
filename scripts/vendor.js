@@ -1,120 +1,103 @@
-self.Flatted = (function (n) {
-  "use strict";
-  function t(n) {
-    return (
-      (t =
-        "function" == typeof Symbol && "symbol" == typeof Symbol.iterator
-          ? function (n) {
-              return typeof n;
-            }
-          : function (n) {
-              return n && "function" == typeof Symbol && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-            }),
-      t(n)
-    );
-  }
-  var r = JSON.parse,
-    e = JSON.stringify,
-    o = Object.keys,
-    u = String,
-    f = "string",
-    i = {},
-    c = "object",
-    a = function (n, t) {
-      return t;
-    },
-    l = function (n) {
-      return n instanceof u ? u(n) : n;
-    },
-    s = function (n, r) {
-      return t(r) === f ? new u(r) : r;
-    },
-    y = function n(r, e, f, a) {
-      for (var l = [], s = o(f), y = s.length, p = 0; p < y; p++) {
-        var v = s[p],
-          S = f[v];
-        if (S instanceof u) {
-          var b = r[S];
-          t(b) !== c || e.has(b) ? (f[v] = a.call(f, v, b)) : (e.add(b), (f[v] = i), l.push({ k: v, a: [r, e, b, a] }));
-        } else f[v] !== i && (f[v] = a.call(f, v, S));
-      }
-      for (var m = l.length, g = 0; g < m; g++) {
-        var h = l[g],
-          O = h.k,
-          d = h.a;
-        f[O] = a.call(f, O, n.apply(null, d));
-      }
-      return f;
-    },
-    p = function (n, t, r) {
-      var e = u(t.push(r) - 1);
-      return n.set(r, e), e;
-    },
-    v = function (n, e) {
-      var o = r(n, s).map(l),
-        u = o[0],
-        f = e || a,
-        i = t(u) === c && u ? y(o, new Set(), u, f) : u;
-      return f.call({ "": i }, "", i);
-    },
-    S = function (n, r, o) {
-      for (
-        var u =
-            r && t(r) === c
-              ? function (n, t) {
-                  return "" === n || -1 < r.indexOf(n) ? t : void 0;
-                }
-              : r || a,
-          i = new Map(),
-          l = [],
-          s = [],
-          y = +p(i, l, u.call({ "": n }, "", n)),
-          v = !y;
-        y < l.length;
-
-      )
-        (v = !0), (s[y] = e(l[y++], S, o));
-      return "[" + s.join(",") + "]";
-      function S(n, r) {
-        if (v) return (v = !v), r;
-        var e = u.call(this, n, r);
-        switch (t(e)) {
-          case c:
-            if (null === e) return e;
-          case f:
-            return i.get(e) || p(i, l, e);
-        }
-        return e;
-      }
-    };
-  return (
-    (n.fromJSON = function (n) {
-      return v(e(n));
-    }),
-    (n.parse = v),
-    (n.stringify = S),
-    (n.toJSON = function (n) {
-      return r(S(n));
-    }),
-    n
-  );
-})({});
-
+// Gira nel contesto della pagina: legge window.dataLayer e lo passa al content script.
+// Regole per non interferire mai con il sito:
+// - nessun window.postMessage (i listener "message" del sito non vedono nulla): solo un evento DOM privato;
+// - nessuna variabile globale aggiunta, nessuna modifica a window.dataLayer (non viene creato se manca);
+// - gli oggetti del dataLayer vengono copiati in modo sicuro: nodi DOM, window, funzioni e
+//   riferimenti circolari diventano testo, cos\u00ec la serializzazione \u00e8 sempre leggera.
 (function () {
-  if (self.__dlcStreamReady) return;
-  self.__dlcStreamReady = true;
+  if (window.__dlcStreamReady) return;
+  Object.defineProperty(window, "__dlcStreamReady", { value: true, enumerable: false });
 
   var POLL_MS = 250;
+  var MAX_DEPTH = 14;
   var timer = null;
   var ref = null;
   var sent = 0;
 
+  function describeNode(node) {
+    try {
+      if (node.nodeType !== 1) return "[" + (node.nodeName || "Node") + "]";
+      var id = node.id ? "#" + node.id : "";
+      var cls = typeof node.className === "string" && node.className.trim() ? "." + node.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
+      return "<" + node.tagName.toLowerCase() + id + cls + ">";
+    } catch (e) {
+      return "[Element]";
+    }
+  }
+
+  function safeCopy(value, depth, seen) {
+    if (value === null || typeof value !== "object") {
+      if (typeof value === "function") return "[Function" + (value.name ? " " + value.name : "") + "]";
+      if (typeof value === "undefined") return undefined;
+      if (typeof value === "bigint" || typeof value === "symbol") return String(value);
+      return value;
+    }
+    try {
+      if (value === window || (typeof Window !== "undefined" && value instanceof Window)) return "[Window]";
+      if (typeof Node !== "undefined" && value instanceof Node) return describeNode(value);
+      if (typeof Event !== "undefined" && value instanceof Event) return "[Event " + value.type + "]";
+      if (value instanceof Date) return value.toISOString();
+    } catch (e) {
+      return "[Object]";
+    }
+    if (depth > MAX_DEPTH) return "[\u2026]";
+    if (seen.indexOf(value) !== -1) return "[Circular]";
+    seen.push(value);
+    var out;
+    try {
+      if (Array.isArray(value)) {
+        out = [];
+        for (var i = 0; i < value.length; i++) {
+          var v = safeCopy(value[i], depth + 1, seen);
+          out.push(v === undefined ? null : v);
+        }
+      } else {
+        out = {};
+        var keys = Object.keys(value);
+        for (var k = 0; k < keys.length; k++) {
+          var item;
+          try {
+            item = value[keys[k]];
+          } catch (e) {
+            item = "[Unreadable]";
+          }
+          var copy = safeCopy(item, depth + 1, seen);
+          if (copy !== undefined) out[keys[k]] = copy;
+        }
+      }
+    } catch (e) {
+      out = "[Unreadable]";
+    }
+    seen.pop();
+    return out;
+  }
+
   function post(mode, items, startIndex) {
-    window.postMessage(Flatted.stringify({ event: "dataLayerData", mode: mode, dlData: items, startIndex: startIndex || 0 }), "*");
+    var payload;
+    try {
+      payload = JSON.stringify({
+        event: "dataLayerData",
+        mode: mode,
+        dlData: items.map(function (item) {
+          return safeCopy(item, 0, []);
+        }),
+        startIndex: startIndex || 0,
+        gtmInjected: !!window.__dlcGtmInjectedCode,
+      });
+    } catch (e) {
+      return;
+    }
+    document.dispatchEvent(new CustomEvent("__dlc_msg:main", { detail: payload }));
+  }
+
+  function current() {
+    var dl = window.dataLayer;
+    return Array.isArray(dl) ? dl : null;
   }
 
   function tick() {
-    var dl = window.dataLayer || [];
+    var dl = current();
+    if (!dl) return;
     if (dl !== ref) {
       ref = dl;
       sent = dl.length;
@@ -130,13 +113,14 @@ self.Flatted = (function (n) {
     }
   }
 
+  // Ogni start (anche su stream gi\u00e0 attivo, es. dopo riconnessione) invia lo snapshot completo:
+  // il background deduplica per documento, quindi non si perdono eventi n\u00e9 si duplicano.
   function start() {
-    if (timer) return;
-    window.dataLayer = window.dataLayer || [];
-    ref = window.dataLayer;
-    sent = ref.length;
-    post("snapshot", ref.slice(0), 0);
-    timer = setInterval(tick, POLL_MS);
+    var dl = current();
+    ref = dl;
+    sent = dl ? dl.length : 0;
+    if (dl) post("snapshot", dl.slice(0), 0);
+    if (!timer) timer = setInterval(tick, POLL_MS);
   }
 
   function stop() {
@@ -146,9 +130,36 @@ self.Flatted = (function (n) {
     }
   }
 
-  window.addEventListener("message", function (event) {
-    if (event.source !== window || !event.data || typeof event.data !== "object") return;
-    if (event.data.__dlc === "start") start();
-    else if (event.data.__dlc === "stop") stop();
-  });
+  var listenerOk = false;
+  function onIsolated(event) {
+    var data;
+    try {
+      data = JSON.parse(event.detail);
+    } catch (e) {
+      return;
+    }
+    if (!data) return;
+    if (data.__dlc === "ping") listenerOk = true;
+    else if (data.__dlc === "start") start();
+    else if (data.__dlc === "stop") stop();
+  }
+
+  // Il sandbox dei Shopify Custom Pixel sostituisce document.addEventListener: si usa il metodo
+  // del prototipo e si verifica subito che il canale funzioni.
+  try {
+    EventTarget.prototype.addEventListener.call(document, "__dlc_msg:isolated", onIsolated);
+    document.dispatchEvent(new CustomEvent("__dlc_msg:isolated", { detail: '{"__dlc":"ping"}' }));
+  } catch (e) {}
+
+  // Avvio immediato: non dipende dal comando "start" del content script.
+  start();
+
+  // Canale di ritorno non disponibile (comandi start/stop non ricevibili): snapshot periodico.
+  // È idempotente, il background scarta gli elementi già visti.
+  if (!listenerOk) {
+    setInterval(function () {
+      var dl = current();
+      if (dl) post("snapshot", dl.slice(0), 0);
+    }, 2000);
+  }
 })();

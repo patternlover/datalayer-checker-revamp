@@ -1,40 +1,52 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DataLayer Checker Plus</title>
     <link rel="stylesheet" href="gstyle.css" />
-    <script src="app.js" async></script>
   </head>
   <body>
     <div class="app">
       <header class="app-header">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 100 87" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="50,0 100,87 0,87" fill="#004544" />
-            </svg>
-          </span>
-          <h1 class="brand-title">DataLayer Checker Plus</h1>
+        <div id="target-bar" class="target">
+          <span class="target-dot" aria-hidden="true"></span>
+          <button id="target-host" class="target-host" type="button">Nessun sito in test</button>
+          <button id="target-unpin" class="target-unpin is-hidden" type="button" title="Smetti di testare questo sito" aria-label="Smetti di testare">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
         </div>
         <div class="header-actions">
-          <div id="env-select" class="seg" role="group" aria-label="Ambiente dataLayer">
-            <button type="button" class="seg-btn" data-env="top_frame">Top</button>
-            <button type="button" class="seg-btn" data-env="iframe">Pixel</button>
-          </div>
-          <span id="injector-chip" class="chip chip-off" title="Stato GTM Injector">GTM Injector OFF</span>
+          <span id="injector-chip" class="chip is-hidden" title="Stato GTM Injector">GTM Injector</span>
           <button id="settings-toggle" class="icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni">
-            <img src="images/settingsLogo.png" alt="" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
         </div>
       </header>
 
-      <main id="events-view" class="view">
+      <div id="target-pin-strip" class="pin-strip is-hidden">
+        <button id="target-pin" class="pin-btn" type="button">Testa questa tab</button>
+      </div>
+
+      <nav class="toolbar">
+        <div class="tabs" role="tablist">
+          <button class="tab-btn active" type="button" data-view="events" role="tab">Eventi <span id="events-count" class="tab-count">0</span></button>
+          <button class="tab-btn" type="button" data-view="uat" role="tab">UAT</button>
+        </div>
+        <div id="env-select" class="seg is-hidden" role="group" aria-label="Ambiente da visualizzare">
+          <button type="button" class="seg-btn" data-env="top_frame" title="dataLayer della pagina (T)">Top <span class="seg-count is-hidden" data-frame="top">0</span></button>
+          <button type="button" class="seg-btn" data-env="iframe" title="dataLayer dei Shopify Custom Pixel (P)">Pixel <span class="seg-count is-hidden" data-frame="pixel">0</span></button>
+        </div>
+      </nav>
+
+      <main id="events-view" class="view split-view">
         <aside class="events-sidebar">
-          <div class="sidebar-head">
-            <h2>Events</h2>
-            <span id="events-count" class="count">0</span>
+          <div class="search-wrap">
+            <input id="events-search" class="search-input" type="search" placeholder="Cerca per nome o valore" autocomplete="off" spellcheck="false" aria-label="Cerca eventi" />
+            <button id="search-clear" class="search-clear is-hidden" type="button" title="Pulisci ricerca" aria-label="Pulisci ricerca">✕</button>
           </div>
           <div id="events-list" class="events-list"></div>
         </aside>
@@ -42,63 +54,79 @@
         <section class="detail">
           <div class="detail-head">
             <div class="detail-title-wrap">
-              <span id="detail-index" class="detail-index">–</span>
               <span id="detail-name" class="detail-name">Nessun evento</span>
+              <span id="detail-time" class="detail-time"></span>
             </div>
+            <span id="detail-index" class="detail-index is-hidden">–</span>
+            <button id="copy-push" class="btn btn-quiet is-hidden" type="button" title="Copia nel formato per Google Sheets">Copia</button>
           </div>
+          <div id="containers-strip" class="containers-strip is-hidden"></div>
           <div id="detail-body" class="detail-body">
-            <div id="empty-state" class="empty-state">
-              <h3>Nessun dataLayer trovato</h3>
-              <ul>
-                <li>Su uno store Shopify con <a href="https://help.shopify.com/en/manual/promoting-marketing/pixels/custom-pixels" target="_blank">Custom Pixel</a> attivo, passa a "Pixel" nel selettore in alto.</li>
-                <li>Se il dataLayer non appare in uno store non-Shopify, torna su "Top" nel selettore e verifica di nuovo.</li>
-              </ul>
-            </div>
+            <div id="empty-state" class="empty-state"></div>
             <pre id="detail-json" class="json is-hidden"></pre>
+            <div id="detail-hits" class="detail-hits is-hidden"></div>
           </div>
-          <button id="copy-push" class="btn-copy-floating" type="button" disabled>Copia</button>
         </section>
       </main>
 
-      <main id="settings-view" class="view is-hidden">
-        <div class="settings-head">
-          <h2>Impostazioni</h2>
-          <button id="settings-close" class="icon-btn" type="button" title="Chiudi" aria-label="Chiudi">✕</button>
-        </div>
-        <div class="settings-scroll">
-          <div class="card" id="injector-card">
-            <div class="card-text">
-              <h2>GTM Injector</h2>
-            <p>Inject a Google Tag Manager container on the pages you browse. Ricordati di disattivarlo a fine debug.</p>
-            <div class="inject-target">
-              <span class="inject-target-label">Iniezione su</span>
-              <div id="inject-target" class="seg seg-light">
-                <button type="button" class="seg-btn" data-target="top">Top</button>
-                <button type="button" class="seg-btn" data-target="pixel">Pixel</button>
-              </div>
+      <main id="uat-view" class="view is-hidden">
+        <div class="uat-scroll">
+          <div class="uat-add">
+            <label class="field-label" for="collect-input">Eventi da verificare</label>
+            <div class="collect-input-row">
+              <input id="collect-input" class="text-input" type="text" placeholder="Incolla la colonna DataLayer TO BE" autocomplete="off" spellcheck="false" />
+              <button id="collect-add" class="btn btn-dark" type="button">Aggiungi</button>
             </div>
-            <div class="inject-target">
-              <span class="inject-target-label">Rispecchia pixel sul Top</span>
-              <div id="mirror-pixel" class="seg seg-light">
-                <button type="button" class="seg-btn" data-mirror="auto">Auto</button>
-                <button type="button" class="seg-btn" data-mirror="on">On</button>
-                <button type="button" class="seg-btn" data-mirror="off">Off</button>
-              </div>
-            </div>
-            <textarea id="gtm-code" class="gtm-textarea" rows="5" placeholder="<!-- Google Tag Manager --> ..."></textarea>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="injector-toggle" />
-              <span class="slider"></span>
-            </label>
+            <p id="collect-parsed" class="field-hint is-hidden"></p>
           </div>
+          <div class="uat-progress">
+            <p id="collect-summary" class="collect-summary"></p>
+            <div class="progress" aria-hidden="true"><span id="collect-bar"></span></div>
+          </div>
+          <div id="collect-list" class="collect-list"></div>
         </div>
-        <div class="settings-foot">
-          <button id="save-settings" class="btn-primary" type="button">Salva codice</button>
+        <footer class="view-foot">
+          <button id="collect-clear" class="btn btn-quiet danger" type="button">Azzera</button>
+          <button id="collect-copy" class="btn btn-dark" type="button">Copia UAT</button>
+        </footer>
+      </main>
+
+      <main id="settings-view" class="view is-hidden">
+        <div class="settings-scroll">
+          <h2 class="view-title">Impostazioni</h2>
+          <section class="setting">
+            <h3>Apertura</h3>
+            <p class="setting-desc">Cosa succede quando clicchi l'icona dell'estensione.</p>
+            <div class="radio-list">
+              <label class="radio"><input type="radio" name="uimode" value="window" /><span><strong>Finestra separata</strong><small>Resta aperta mentre lavori su altre tab. Funziona anche su Arc.</small></span></label>
+              <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span><strong>Pannello laterale</strong><small>Solo Chrome.</small></span></label>
+            </div>
+          </section>
+
+          <section class="setting" id="injector-card">
+            <div class="setting-head">
+              <h3>GTM Injector</h3>
+              <label class="switch" title="Attiva o disattiva l'injection">
+                <input type="checkbox" id="injector-toggle" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <p class="setting-desc">Carica un container GTM nella pagina, solo sui domini indicati. Disattivalo a fine debug.</p>
+            <p id="container-conflict" class="conflict-note is-hidden"></p>
+            <label class="field-label" for="gtm-domains">Domini</label>
+            <input id="gtm-domains" class="text-input" type="text" placeholder="example.com, shop.altro.com" autocomplete="off" spellcheck="false" />
+            <p class="field-hint">Sottodomini inclusi.</p>
+            <label class="field-label" for="gtm-code">Snippet del container</label>
+            <textarea id="gtm-code" class="text-input code-input" rows="6" spellcheck="false" placeholder="<!-- Google Tag Manager --> …"></textarea>
+          </section>
         </div>
+        <footer class="view-foot">
+          <button id="save-settings" class="btn btn-dark" type="button">Salva impostazioni</button>
+        </footer>
       </main>
 
       <div id="toast" class="toast">Salvato</div>
     </div>
+    <script type="module" src="ui/main.js"></script>
   </body>
 </html>

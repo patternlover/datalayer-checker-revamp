@@ -6,10 +6,14 @@
          "32": "images/icon32.png",
          "48": "images/icon48.png"
       },
-      "default_popup": "index.html"
+      "default_title": "DataLayer Checker Plus"
+   },
+   "side_panel": {
+      "default_path": "index.html"
    },
    "background": {
-      "service_worker": "background.js"
+      "service_worker": "background.js",
+      "type": "module"
    },
    "description": "The simplest way to debug and verify dataLayer implementations without using the browser console",
    "host_permissions": [ "https://*/*" ],
@@ -20,9 +24,10 @@
       "48": "images/icon48.png"
    },
    "manifest_version": 3,
+   "minimum_chrome_version": "116",
    "name": "DataLayer Checker Plus",
-   "permissions": [ "scripting", "webNavigation", "storage", "clipboardWrite" ],
-   "version": "1.1.0",
+   "permissions": [ "scripting", "webNavigation", "webRequest", "storage", "clipboardWrite", "sidePanel" ],
+   "version": "1.5.0",
    "web_accessible_resources": [ {
       "matches": [ "https://*/*" ],
       "resources": [ "scripts/vendor.js" ]

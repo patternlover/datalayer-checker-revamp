@@ -114,17 +114,13 @@ function injectVendor(callback) {
   node.appendChild(script);
 }
 
-function isJsonString(str) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
+// Canale privato con gli script della pagina: eventi DOM dedicati, mai window.postMessage.
+function sendToPage(obj) {
+  document.dispatchEvent(new CustomEvent("__dlc_msg:isolated", { detail: JSON.stringify(obj) }));
 }
 
 function startStream() {
-  window.postMessage({ __dlc: "start" }, "*");
+  sendToPage({ __dlc: "start" });
 }
 
 if (window.__dlcPort) {
@@ -134,33 +130,89 @@ if (window.__dlcPort) {
   window.__dlcPort = null;
 }
 
-window.__dlcPort = chrome.runtime.connect({ name: "dlc-stream" });
-window.__dlcPort.onDisconnect.addListener(function () {
-  window.postMessage({ __dlc: "stop" }, "*");
-  window.__dlcPort = null;
-});
+window.__dlcReconnectTries = 0;
 
-window.onmessage = function (e) {
-  if (!isJsonString(e.data)) return;
-  var dataLayer_data = Flatted.parse(e.data);
-  if (dataLayer_data.event === "dataLayerData" && dataLayer_data.dlData) {
-    dataLayer_data.meta = {
-      url: location.href,
-      host: location.host,
-      isTop: window.top === window,
-      isShopifySandbox: location.href.indexOf("/sandbox/modern/") !== -1,
-    };
-    if (window.__dlcPort) {
-      try {
-        window.__dlcPort.postMessage(Flatted.stringify(dataLayer_data));
-      } catch (err) {}
-    }
+// ID stabile per documento: permette al background di deduplicare gli snapshot del dataLayer
+// quando il content script viene re-iniettato o la porta si riconnette.
+if (!window.__dlcDocId) {
+  window.__dlcDocId = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+function connectCapture() {
+  var port;
+  try {
+    // Il ruolo nel nome della porta: il background non può fidarsi di frameId === 0
+    // (le pagine prerenderizzate mantengono un frameId diverso anche dopo l'attivazione).
+    port = chrome.runtime.connect({ name: "dlc-capture|" + (window.top === window ? "top" : "sub") });
+  } catch (e) {
+    return;
   }
-};
+  window.__dlcPort = port;
+  port.onMessage.addListener(function (msg) {
+    // Il background, dopo aver accettato la porta, chiede uno snapshot completo.
+    if (msg && msg.cmd === "resync") startStream();
+  });
+  setTimeout(function () {
+    if (window.__dlcPort === port) window.__dlcReconnectTries = 0;
+  }, 3000);
+  port.onDisconnect.addListener(function () {
+    if (window.__dlcPort !== port) return;
+    window.__dlcPort = null;
+    if (window.__dlcReconnectTries >= 5) {
+      sendToPage({ __dlc: "stop" });
+      return;
+    }
+    window.__dlcReconnectTries++;
+    setTimeout(function () {
+      connectCapture();
+      if (window.__dlcPort) startStream();
+    }, 800);
+  });
+}
+
+connectCapture();
+
+function onPageMessage(event) {
+  var data;
+  try {
+    data = JSON.parse(event.detail);
+  } catch (e) {
+    return;
+  }
+  if (!data || typeof data !== "object") return;
+  var port = window.__dlcPort;
+  if (!port) return;
+  try {
+    if (data.__dlc === "gtmInjected") {
+      port.postMessage(Flatted.stringify({ gtmMeta: true, gtmInjected: true }));
+    } else if (data.__dlc === "platform") {
+      port.postMessage({ type: "platform", shopify: !!data.shopify });
+    } else if ((data.__dlc === "containers" || data.__dlc === "gtmSkipped") && Array.isArray(data.ids)) {
+      port.postMessage({ type: "containers", ids: data.ids });
+    } else if (data.event === "dataLayerData" && Array.isArray(data.dlData)) {
+      data.meta = {
+        url: location.href,
+        host: location.host,
+        docId: window.__dlcDocId,
+        isTop: window.top === window,
+        isShopifySandbox: location.href.indexOf("/sandbox/modern/") !== -1,
+        gtmInjected: !!data.gtmInjected,
+      };
+      port.postMessage(Flatted.stringify(data));
+    }
+  } catch (err) {}
+}
+
+// Un solo listener anche se lo script viene iniettato più volte.
+if (window.__dlcOnPageMessage) document.removeEventListener("__dlc_msg:main", window.__dlcOnPageMessage);
+window.__dlcOnPageMessage = onPageMessage;
+document.addEventListener("__dlc_msg:main", onPageMessage);
 
 if (window.__dlcVendorInjected) {
-  startStream();
+  if (window.__dlcPort) startStream();
 } else {
   window.__dlcVendorInjected = true;
-  injectVendor(startStream);
+  injectVendor(function () {
+    if (window.__dlcPort) startStream();
+  });
 }

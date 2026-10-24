@@ -57,17 +57,24 @@
     if (el) el.remove();
   }
 
+  function hostMatches(host, list) {
+    if (!host || !Array.isArray(list)) return false;
+    return list.some(function (domain) {
+      return host === domain || host.endsWith("." + domain);
+    });
+  }
+
   async function apply() {
-    var { gtmcodepush } = await chrome.storage.sync.get(["gtmcodepush"]);
-    if (gtmcodepush === true) showInjectorBanner();
+    var { gtmcodepush, gtmDomains } = await chrome.storage.sync.get(["gtmcodepush", "gtmDomains"]);
+    if (gtmcodepush === true && hostMatches(location.hostname, gtmDomains)) showInjectorBanner();
     else hideInjectorBanner();
   }
 
   if (!window.__dlcBannerReady) {
     window.__dlcBannerReady = true;
     chrome.storage.onChanged.addListener(function (changes, area) {
-      if (area !== "sync" || !changes.gtmcodepush) return;
-      changes.gtmcodepush.newValue === true ? showInjectorBanner() : hideInjectorBanner();
+      if (area !== "sync") return;
+      if (changes.gtmcodepush || changes.gtmDomains) apply();
     });
   }
 
