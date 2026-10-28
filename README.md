@@ -1,7 +1,7 @@
 # DataLayer Checker Revamp
 
-Estensione Chrome (Manifest V3) per ispezionare il `dataLayer`, vedere le hit dei vendor e
-iniettare un container GTM su un dominio specifico. Si apre in una **finestra separata** (o nel
+Estensione Chrome (Manifest V3) per ispezionare il `dataLayer` e iniettare un container GTM su
+un dominio specifico. Si apre in una **finestra separata** (o nel
 side panel, se preferisci): si lavora di fianco alla pagina, senza aprire la console.
 
 Uso interno del team. Non è pubblicata sullo store e non va ridistribuita fuori dal team.
@@ -46,8 +46,8 @@ restano finché non apri un altro sito.
 ## Provarla subito (senza un sito cliente)
 
 In `docs/demo/` c'è un finto negozio con un `dataLayer` vero: eventi al caricamento, eventi al
-click, hit finte verso GA4 e Meta, più due pulsanti per i casi che rompono i dataLayer veri
-(svuotamento dell'array e navigazione SPA). Dalla cartella `docs/demo`:
+click, più due pulsanti per i casi che rompono i dataLayer veri (svuotamento dell'array e
+navigazione SPA). Dalla cartella `docs/demo`:
 
 ```bash
 python3 -m http.server 8080
@@ -61,10 +61,9 @@ spiega passo per passo cosa deve comparire.
 
 **Eventi** — la lista dei push, con ricerca per nome o valore, dettaglio JSON dell'evento
 selezionato e il pulsante **Copia** che copia l'oggetto nel formato incollabile in Google
-Sheets. Sotto il dettaglio, quando c'è, la riga **Hit correlate**: le richieste ai vendor che
-sembrano partite da quell'evento (stesso frame, entro 1,5 s, nome dell'evento uguale quando
-combacia). È una correlazione probabile, non una certezza: il click su una chip copia l'URL
-della hit, così si controlla.
+Sheets. La divisione fra la lista e il dettaglio si trascina: il separatore mostra il cursore a
+due frecce, in verticale nel pannello stretto e in orizzontale in una finestra larga, e la misura
+scelta viene ricordata.
 
 **UAT** — la verifica di una specifica, in tre passaggi: incolla la colonna *DataLayer TO BE*
 del foglio (i nomi evento vengono estratti da soli), premi **Aggiungi**, e il pannello segna
@@ -81,14 +80,6 @@ quel `dataLayer` non è quello della pagina. L'estensione cattura sempre entramb
 selettore **Top / Pixel** appena riconosce un Custom Pixel (scorciatoie `T` e `P`). Il selettore
 cambia solo la vista: i due `dataLayer` restano disponibili in parallelo, non si perde nulla
 passando da uno all'altro.
-
-## Hit dei vendor
-
-`webRequest` in sola osservazione, nessuna modifica alle richieste. Vendor riconosciuti: GA4,
-GTM, Google Ads, Meta, TikTok, LinkedIn, Pinterest, Hotjar, Clarity. Per ogni hit l'estensione
-conosce vendor, nome evento, parametri decodificati e stato HTTP reale (una hit che parte con
-204 non è una hit persa, una che finisce in errore sì): oggi questo si vede nella riga **Hit
-correlate** dell'evento, non in una vista dedicata.
 
 ## GTM Injector
 
@@ -121,8 +112,8 @@ invece di rompere il sito. Funziona solo su `https://`.
 
 ## Cosa esce dal browser
 
-Nessuna richiesta di rete verso server nostri o di terzi: eventi, hit e sessioni vivono in
-memoria e in `chrome.storage.session`, che il browser svuota alla chiusura.
+Nessuna richiesta di rete verso server nostri o di terzi: eventi e sessioni vivono in memoria e
+in `chrome.storage.session`, che il browser svuota alla chiusura.
 
 Un'eccezione dichiarata: impostazioni, elenco domini, snippet del container e preferenze
 stanno in `chrome.storage.sync`, che **Chrome sincronizza con il tuo account Google**. È il
@@ -131,9 +122,9 @@ non deve uscire dal tuo disco, non usare l'injector su quel profilo.
 
 ## Screenshot
 
-Pannello con gli eventi in streaming, il dettaglio JSON e le hit correlate:
+Pannello con gli eventi in streaming e il dettaglio JSON dell'evento selezionato:
 
-![Pannello con eventi, dettaglio e hit correlate](docs/screenshots/panel.png)
+![Pannello con eventi e dettaglio](docs/screenshots/panel.png)
 
 Scheda UAT: gli eventi attesi e quali sono già scattati.
 
@@ -151,8 +142,8 @@ Gli screenshot si rifanno con la pagina demo in `docs/demo/` (istruzioni nel fil
 
 ## Novità della 1.6.0
 
-- Le **hit correlate** tornano visibili sotto l'evento selezionato (la vista Hit dedicata resta
-tolta) e vengono ri-attribuite all'evento giusto quando arriva dopo la hit.
+- La divisione fra la lista eventi e il dettaglio si trascina (cursore a due frecce sul
+  separatore), e la misura scelta resta al riavvio.
 - Il GTM Injector **salva lo snippet quando lo accendi**: prima serviva anche "Salva impostazioni"
   e senza quel click il banner diceva "attivo" senza nessun container in pagina.
 - Lo snippet incollato dal sito GTM funziona anche se contiene il blocco `<noscript>` o arriva con
@@ -160,8 +151,7 @@ tolta) e vengono ri-attribuite all'evento giusto quando arriva dopo la hit.
 - Il banner ha la **×** per essere chiuso senza spegnere l'iniezione.
 - Dopo un `dataLayer.length = 0` (o un `dataLayer = []`) i primi eventi del nuovo ciclo non si
   perdono più.
-- Gli eventi di uno snapshot non hanno più tutti lo stesso timestamp, quindi la lista e le hit
-  correlate non si confondono.
+- Gli eventi di uno snapshot non hanno più tutti lo stesso timestamp.
 - In fondo alle impostazioni c'è la **versione** caricata: serve a capirsi quando una segnalazione
   arriva da un collega.
 
@@ -169,11 +159,11 @@ tolta) e vengono ri-attribuite all'evento giusto quando arriva dopo la hit.
 
 | Permesso | Perché |
 | -------- | ------ |
-| `host_permissions: https://*/*` | leggere il `dataLayer` e osservare le hit dei vendor su qualunque sito https tu stia testando |
+| `host_permissions: https://*/*` | leggere il `dataLayer` e osservare le richieste ai vendor su qualunque sito https tu stia testando |
 | `host_permissions: http://localhost/*`, `http://127.0.0.1/*` | la pagina demo e i test in locale: senza permesso Chrome non dà all'estensione nemmeno l'URL della tab |
 | `scripting` | iniettare il collector nella tab in test (e il container GTM, solo se l'injector è acceso e solo sui domini scelti) |
 | `webNavigation` | agganciare il collector a ogni navigazione, cambi di pagina delle SPA compresi |
-| `webRequest` | osservare le hit in uscita verso i vendor; sola lettura |
+| `webRequest` | osservare, in sola lettura, le richieste in uscita verso i vendor (la raccolta è pronta, la vista arriva in una prossima versione) |
 | `storage` | sessioni, impostazioni, codice dell'injector, raccolte UAT |
 | `clipboardWrite` | i pulsanti "Copia" |
 | `sidePanel` | la modalità pannello laterale, opzionale |
@@ -191,7 +181,7 @@ manifest.json      MV3, finestra/side panel, permessi
 background.js      service worker: probe, iniezione, sessioni, webRequest
 index.html         guscio del pannello
 gstyle.css         stile del pannello
-ui/                interfaccia: eventi, hit, uat (collect), injector, settings, store, util
+ui/                interfaccia: eventi, uat (collect), injector, settings, store, util
 lib/               logica condivisa: collect, correlation, session-store, target, vendors, flatted
 scripts/           content script, banner, bridge, gtmcode, containerprobe, vendor
 images/            icone
