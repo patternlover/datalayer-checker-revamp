@@ -381,8 +381,11 @@ function renderDetail(session) {
 }
 
 function renderDetailHits(session, entry) {
-  // Vista Hit rimossa per ora: le hit correlate non vengono mostrate.
-  const hits = [];
+  // Le hit che link() ha collegato a questo evento: la correlazione e' una finestra di 1,5 s
+  // sullo stesso frame, quindi si dice "probabile" e si mostra l'URL al click, senza fingere
+  // che sia un dato certo.
+  const ids = new Set(Array.isArray(entry.hits) ? entry.hits : []);
+  const hits = ids.size ? (session.hits || []).filter((hit) => ids.has(hit.id)) : [];
   if (!hits.length) {
     els.detailHits.classList.add("is-hidden");
     els.detailHits.innerHTML = "";
@@ -398,8 +401,11 @@ function renderDetailHits(session, entry) {
       (hit.vendorLabel || "hit") + (hit.eventName ? " · " + hit.eventName : "") + " · " + formatTime(hit.ts).slice(0, 8)
     );
     chip.type = "button";
-    chip.title = "Apri nella vista Hit (correlazione probabile)";
-    chip.addEventListener("click", () => ctx.goToHit(hit.id));
+    chip.title = "Correlazione probabile (stesso frame, entro 1,5 s). Click: copia l'URL della hit.\n" + (hit.url || "");
+    chip.addEventListener("click", async () => {
+      const ok = await copyText(hit.url || "");
+      ctx.toast(ok ? "URL della hit copiato" : "Copia non riuscita");
+    });
     els.detailHits.appendChild(chip);
   });
 }

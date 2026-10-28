@@ -396,6 +396,15 @@ button:disabled {
     border-top: 1px solid var(--line);
 }
 
+/* Versione del build: sta a sinistra, i pulsanti restano a destra. */
+.app-version {
+    margin-right: auto;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
 /* ---------- Pulsanti e campi ---------- */
 .btn {
     display: inline-flex;
@@ -811,8 +820,42 @@ button:disabled {
     color: var(--muted);
 }
 
+/* Hit correlate all'evento selezionato: una riga di chip, non una vista. */
 .detail-hits {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+}
+
+.detail-hits-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.hit-chip {
+    max-width: 100%;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: var(--surface-2);
+    color: var(--teal-2);
+    font: 600 11px/1.4 var(--sans);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hit-chip:hover {
+    border-color: var(--teal-3);
+    background: var(--tint);
 }
 
 .app.no-events .events-sidebar,
