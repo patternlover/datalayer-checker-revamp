@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><title>Demo shop — DataLayer Checker</title>
+<style>
+  body{font:15px/1.5 system-ui;margin:0;padding:26px;background:#f4f6f5;color:#0e2c2b}
+  h1{font-size:19px;margin:0 0 2px} .sub{color:#5f7674;margin:0 0 16px;font-size:13px}
+  .card{background:#fff;border:1px solid #dce4e2;border-radius:10px;padding:16px;max-width:460px}
+  .row{display:flex;align-items:center;gap:14px;margin-top:10px}
+  .thumb{width:56px;height:56px;border-radius:8px;background:#e4efed}
+  button{font:600 14px/1 inherit;font-family:system-ui;padding:10px 14px;border-radius:8px;border:0;background:#004544;color:#fff;cursor:pointer}
+</style></head>
+<body>
+<h1>Prodotti</h1><p class="sub">Pagina demo per l'estensione DataLayer Checker: eventi dataLayer e hit finte verso GA4 e Meta.</p>
+<div class="card">
+  <div class="row"><div class="thumb"></div>
+    <div><strong>Maglia Away 24/25</strong><div style="color:#5f7674">89,00 € · taglia M</div></div>
+  </div>
+  <div class="row"><button id="add">Aggiungi al carrello</button></div>
+</div>
+<div class="card" style="margin-top:14px;max-width:460px">
+  <strong style="font-size:14px">Altri casi da provare</strong>
+  <div class="row" style="flex-wrap:wrap">
+    <button id="reset" style="background:#0b5856">dataLayer.length = 0</button>
+    <button id="spa" style="background:#13706d">Cambio pagina SPA</button>
+  </div>
+  <p class="sub" style="margin:10px 0 0;font-size:12px">Il primo svuota il dataLayer e riparte: gli eventi nuovi devono comparire tutti. Il secondo cambia URL senza ricaricare: nella lista deve apparire un separatore &laquo;Navigazione SPA&raquo;.</p>
+</div>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({event:"gtm.js","gtm.start":Date.now(),"gtm.uniqueEventId":1});
+  window.dataLayer.push({event:"page_view",page_type:"product",currency:"EUR"});
+  window.dataLayer.push({event:"view_item",ecommerce:{currency:"EUR",value:89,items:[{item_id:"MAG-001",item_name:"Maglia Away 24/25",price:89,quantity:1}]}});
+  var n = 4;
+  function ga(name){ new Image().src = "https://www.google-analytics.com/g/collect?v=2&tid=G-DEMO123&en=" + name + "&ep.page_type=product"; }
+  function meta(name, value){ new Image().src = "https://www.facebook.com/tr/?id=1234567890&ev=" + name + "&cd[value]=" + value; }
+  ga("page_view"); meta("ViewContent", 89);
+  document.getElementById("add").addEventListener("click", function () {
+    window.dataLayer.push({event:"add_to_cart","gtm.uniqueEventId":n++,ecommerce:{currency:"EUR",value:89,items:[{item_id:"MAG-001",item_name:"Maglia Away 24/25",price:89,quantity:1}]}});
+    window.dataLayer.push({event:"dl_view_cart",page_type:"cart"});
+    ga("add_to_cart"); meta("AddToCart", 89);
+    document.getElementById("add").textContent = "Aggiunto";
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    window.dataLayer.length = 0;
+    window.dataLayer.push({event:"gtm.js","gtm.start":Date.now(),"gtm.uniqueEventId":90});
+    window.dataLayer.push({event:"page_view",page_type:"cart",currency:"EUR"});
+    window.dataLayer.push({event:"begin_checkout",ecommerce:{currency:"EUR",value:89}});
+  });
+  document.getElementById("spa").addEventListener("click", function () {
+    history.pushState({}, "", "/carrello");
+    window.dataLayer.push({event:"dl_view_cart",page_type:"cart"});
+  });
+</script>
+</body></html>
