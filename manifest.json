@@ -6,7 +6,7 @@
          "32": "images/icon32.png",
          "48": "images/icon48.png"
       },
-      "default_title": "DataLayer Checker Plus"
+      "default_title": "DataLayer Checker Revamp"
    },
    "side_panel": {
       "default_path": "index.html"
@@ -15,8 +15,8 @@
       "service_worker": "background.js",
       "type": "module"
    },
-   "description": "The simplest way to debug and verify dataLayer implementations without using the browser console",
-   "host_permissions": [ "https://*/*" ],
+   "description": "Ispeziona i dataLayer, le hit dei vendor e inietta un container GTM. Uso interno.",
+   "host_permissions": [ "https://*/*", "http://localhost/*", "http://127.0.0.1/*" ],
    "icons": {
       "128": "images/icon128.png",
       "16": "images/icon16.png",
@@ -25,11 +25,11 @@
    },
    "manifest_version": 3,
    "minimum_chrome_version": "116",
-   "name": "DataLayer Checker Plus",
+   "name": "DataLayer Checker Revamp",
    "permissions": [ "scripting", "webNavigation", "webRequest", "storage", "clipboardWrite", "sidePanel" ],
-   "version": "1.5.0",
+   "version": "1.6.0",
    "web_accessible_resources": [ {
-      "matches": [ "https://*/*" ],
+      "matches": [ "https://*/*", "http://localhost/*", "http://127.0.0.1/*" ],
       "resources": [ "scripts/vendor.js" ]
    } ]
 }

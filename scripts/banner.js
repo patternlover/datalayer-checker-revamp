@@ -1,8 +1,13 @@
 (function () {
   var BANNER_ID = "gtm-injector-banner";
+  // Chiudere il banner non deve spegnere l'iniezione: sono due cose diverse. Il flag vive
+  // quanto il documento: alla navigazione dopo il banner torna (e riavvisa), quindi non si
+  // può "dimenticare" l'iniezione accesa per giorni.
+  var hidden = false;
 
   function showInjectorBanner() {
     if (window.top !== window) return;
+    if (hidden) return;
     if (document.getElementById(BANNER_ID)) return;
     var parent = document.body || document.documentElement;
     if (!parent) return;
@@ -49,6 +54,26 @@
 
     banner.appendChild(label);
     banner.appendChild(off);
+
+    var close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.title = "Nascondi il banner (l'iniezione resta attiva)";
+    close.setAttribute("aria-label", "Nascondi il banner");
+    close.style.cssText = [
+      "cursor:pointer",
+      "background:transparent",
+      "border:0",
+      "padding:0 2px",
+      "font:600 15px/1 system-ui,sans-serif",
+      "color:#004544",
+    ].join(";");
+    close.addEventListener("click", function () {
+      hidden = true;
+      hideInjectorBanner();
+    });
+    banner.appendChild(close);
+
     parent.appendChild(banner);
   }
 

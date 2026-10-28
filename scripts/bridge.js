@@ -10,12 +10,16 @@
     });
   }
 
+  // Lo snippet si incolla dal sito GTM: arriva con \r\n su Windows e con i commenti HTML
+  // attorno. Se si copia anche il secondo blocco, c'e' il <noscript> con un iframe: dentro
+  // uno script quella roba e' un errore di sintassi che uccide il container, quindi si toglie.
   function cleanGtmCode(gtmcode) {
     return gtmcode
-      .replace(/<!-- Google Tag Manager -->\n/g, "")
-      .replace(/<script>/g, "")
-      .replace(/<\/script>/g, "")
-      .replace(/\n<!-- End Google Tag Manager -->/g, "");
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<script[^>]*>/gi, "")
+      .replace(/<\/script>/gi, "")
+      .trim();
   }
 
   async function sendGtmCode() {

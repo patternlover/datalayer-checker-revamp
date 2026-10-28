@@ -50,11 +50,16 @@ export async function saveSettings(fields) {
   return { parsed: parsed, turnedOff: turnedOff };
 }
 
-export async function setOn(on) {
+export async function setOn(on, code) {
   if (on) {
     if (!injector.domains.length) return { ok: false, reason: "no-domains" };
+    const snippet = typeof code === "string" ? code : injector.code;
+    if (!snippet.trim()) return { ok: false, reason: "no-code" };
+    injector.code = snippet;
     injector.on = true;
-    await chrome.storage.sync.set({ gtmcodepush: true, gtmDomains: injector.domains });
+    // Lo snippet si salva qui, non solo con "Salva impostazioni": accendere l'injector senza
+    // salvare era il modo più facile per vedere "GTM Injector ON" e nessun container in pagina.
+    await chrome.storage.sync.set({ gtmcodepush: true, gtmDomains: injector.domains, gtmcode: snippet });
     injectIntoActiveTab();
     return { ok: true };
   }
@@ -63,13 +68,21 @@ export async function setOn(on) {
   return { ok: true };
 }
 
-export function injectIntoActiveTab() {
+// Il frame principale non è sempre frameId 0 (pagine prerenderizzate: vedi background.js):
+// cercare il top vero evita che l'iniezione su una tab già aperta finisca nel vuoto.
+export async function injectIntoActiveTab() {
   if (state.tabId == null) return;
+  let frameIds = [0];
+  try {
+    const frames = await chrome.webNavigation.getAllFrames({ tabId: state.tabId });
+    const tops = (frames || []).filter((frame) => frame.parentFrameId === -1).map((frame) => frame.frameId);
+    if (tops.length) frameIds = tops;
+  } catch (e) {}
   chrome.scripting
-    .executeScript({ target: { tabId: state.tabId, frameIds: [0] }, files: ["scripts/gtmcode.js"], world: "MAIN" })
+    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/gtmcode.js"], world: "MAIN" })
     .catch(() => {});
   chrome.scripting
-    .executeScript({ target: { tabId: state.tabId, frameIds: [0] }, files: ["scripts/bridge.js"] })
+    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/bridge.js"] })
     .catch(() => {});
 }
 

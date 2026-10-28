@@ -1,4 +1,4 @@
-import { $, parseDomains } from "./util.js";
+import { $, parseDomains, gtmCodeWarning } from "./util.js";
 import { state } from "./store.js";
 import { injector, setOn, saveSettings } from "./injector.js";
 
@@ -18,7 +18,16 @@ export function init(context) {
   bind();
   fillFields();
   initUiMode();
+  showVersion();
   return { render };
+}
+
+// La versione serve a loro, non a noi: quando una segnalazione arriva, la prima domanda è
+// "quale build hai caricato".
+function showVersion() {
+  const el = $("#app-version");
+  if (!el) return;
+  el.textContent = "v" + chrome.runtime.getManifest().version + " · uso interno";
 }
 
 // Modalità di apertura: finestra separata (default, anche Arc) o pannello laterale (Chrome).
@@ -50,10 +59,11 @@ function bind() {
       injector.domains = parsed.list;
       els.domains.value = injector.domains.join(", ");
     }
-    const result = await setOn(wantOn);
+    const result = await setOn(wantOn, els.code.value);
     if (!result.ok) {
       els.toggle.checked = false;
-      ctx.toast(result.reason === "no-domains" ? "Inserisci almeno un dominio" : "Impossibile attivare");
+      if (result.reason === "no-code") ctx.toast("Incolla lo snippet del container");
+      else ctx.toast(result.reason === "no-domains" ? "Inserisci almeno un dominio" : "Impossibile attivare");
     }
     render();
   });
@@ -63,6 +73,11 @@ function bind() {
     fillFields();
     if (result.turnedOff) {
       ctx.toast("Injector disattivato: nessun dominio");
+      return;
+    }
+    const warning = gtmCodeWarning(els.code.value);
+    if (warning) {
+      ctx.toast(warning);
       return;
     }
     ctx.toast(result.parsed.dropped ? "Salvato (domini non validi ignorati)" : "Impostazioni salvate");
@@ -77,7 +92,7 @@ export function fillFields() {
 
 export function render() {
   els.card.classList.toggle("is-on", injector.on);
-  els.code.disabled = !injector.on;
+  // Sempre editabile: prima si incolla lo snippet e si scelgono i domini, poi si accende.
   els.toggle.checked = injector.on;
 
   const containers = state.session ? state.session.containers : null;

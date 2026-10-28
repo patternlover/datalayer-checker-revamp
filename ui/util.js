@@ -192,3 +192,20 @@ export function el(tag, className, text) {
   if (text != null) node.textContent = text;
   return node;
 }
+
+// Controllo dello snippet GTM al salvataggio: l'injector lo esegue nella pagina, dove un
+// errore di sintassi non si vede e il container semplicemente non parte. Qui si dice prima.
+// Il codice non si compila (una pagina di estensione MV3 non puo' usare eval): si guarda che
+// resti solo JavaScript dopo aver tolto i blocchi che bridge.js toglie davvero.
+export function gtmCodeWarning(raw) {
+  const source = String(raw || "");
+  if (!source.trim()) return null;
+  if (!/GTM-[A-Z0-9]+/.test(source)) return "Nessun ID GTM-… nel codice: sembra incollato male";
+  const leftover = source
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .trim();
+  if (leftover) return "C'è HTML fuori dai blocchi script: l'injector lo ignora";
+  return null;
+}
