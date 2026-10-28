@@ -405,6 +405,46 @@ button:disabled {
     white-space: nowrap;
 }
 
+/* ---------- Separatore lista / dettaglio ----------
+   Nel pannello stretto le due parti sono impilate e si trascina in verticale; in una finestra
+   larga la lista sta a sinistra e si trascina in orizzontale. Il cursore a due frecce compare
+   solo sul separatore, quindi non interferisce con la selezione del testo. */
+#events-split {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: transparent;
+    transition: background-color 0.12s ease;
+}
+
+#events-split:hover,
+#events-split:focus-visible,
+#events-split.is-dragging {
+    background: var(--teal-3);
+    outline: none;
+}
+
+/* Durante il trascinamento non si seleziona testo per sbaglio. */
+body.is-splitting {
+    user-select: none;
+}
+
+@media (max-width: 620px) {
+    #events-split {
+        width: 100%;
+        height: 7px;
+        cursor: row-resize;
+    }
+}
+
+@media (min-width: 621px) {
+    #events-split {
+        width: 7px;
+        align-self: stretch;
+        cursor: col-resize;
+    }
+}
+
 /* ---------- Pulsanti e campi ---------- */
 .btn {
     display: inline-flex;
@@ -622,10 +662,6 @@ button:disabled {
     color: var(--muted);
 }
 
-.event-hits {
-    display: none;
-}
-
 .nav-divider {
     position: sticky;
     top: 0;
@@ -820,45 +856,8 @@ button:disabled {
     color: var(--muted);
 }
 
-/* Hit correlate all'evento selezionato: una riga di chip, non una vista. */
-.detail-hits {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--line-2);
-}
-
-.detail-hits-label {
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.hit-chip {
-    max-width: 100%;
-    padding: 3px 8px;
-    border: 1px solid var(--line);
-    border-radius: 99px;
-    background: var(--surface-2);
-    color: var(--teal-2);
-    font: 600 11px/1.4 var(--sans);
-    cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.hit-chip:hover {
-    border-color: var(--teal-3);
-    background: var(--tint);
-}
-
 .app.no-events .events-sidebar,
+.app.no-events #events-split,
 .app.no-events .detail-head {
     display: none;
 }
