@@ -13,6 +13,7 @@
   var timer = null;
   var ref = null;
   var sent = 0;
+  var tail = null;
 
   function describeNode(node) {
     try {
@@ -72,7 +73,7 @@
     return out;
   }
 
-  function post(mode, items, startIndex) {
+  function post(mode, items, startIndex, reset) {
     var payload;
     try {
       payload = JSON.stringify({
@@ -82,6 +83,7 @@
           return safeCopy(item, 0, []);
         }),
         startIndex: startIndex || 0,
+        reset: reset === true,
         gtmInjected: !!window.__dlcGtmInjectedCode,
       });
     } catch (e) {
@@ -98,18 +100,37 @@
   function tick() {
     var dl = current();
     if (!dl) return;
+    var last = dl.length ? dl[dl.length - 1] : null;
     if (dl !== ref) {
+      // Array sostituito (dataLayer = [...]): un nuovo ciclo, le posizioni ripartono da zero.
       ref = dl;
       sent = dl.length;
-      post("snapshot", dl.slice(0), 0);
+      tail = last;
+      post("snapshot", dl.slice(0), 0, true);
       return;
     }
     if (dl.length > sent) {
       var items = dl.slice(sent);
       sent = dl.length;
+      tail = last;
       post("append", items, sent - items.length);
     } else if (dl.length < sent) {
+      // L'array si è accorciato: tipicamente dataLayer.length = 0 seguito da nuovi push, o
+      // dataLayer = [] in una SPA. Le posizioni ripartono da zero, quindi il documento va
+      // azzerato nel background (reset), non solo "accorciato": altrimenti i primi eventi
+      // del nuovo ciclo cadono su posizioni già viste e vengono scartati come duplicati.
       sent = dl.length;
+      tail = last;
+      post("snapshot", dl.slice(0), 0, true);
+    } else if (sent > 0 && last !== tail) {
+      // Stessa lunghezza ma ultimo elemento diverso: l'array è stato svuotato e riempito fra
+      // due poll (dataLayer.length = 0 + push sincroni). Senza questo confronto il reset
+      // sarebbe invisibile e i primi eventi del nuovo ciclo andrebbero persi.
+      sent = dl.length;
+      tail = last;
+      post("snapshot", dl.slice(0), 0, true);
+    } else {
+      tail = last;
     }
   }
 
@@ -119,6 +140,7 @@
     var dl = current();
     ref = dl;
     sent = dl ? dl.length : 0;
+    tail = dl && dl.length ? dl[dl.length - 1] : null;
     if (dl) post("snapshot", dl.slice(0), 0);
     if (!timer) timer = setInterval(tick, POLL_MS);
   }

@@ -466,8 +466,13 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
 
   const startIndex = typeof parsed.startIndex === "number" ? parsed.startIndex : 0;
   const now = Date.now();
+  // Un timestamp per posizione, crescente: nello snapshot l'ora vera dei push storici non
+  // esiste, ma con un solo Date.now() per tutti gli eventi la lista mostra orari identici e
+  // correlateNewHit non ha modo di scegliere il vicino giusto (a parita' di distanza vince
+  // il primo dell'array, cioe' gtm.js).
+  const count = parsed.dlData.length;
   const entries = parsed.dlData.map((data, k) => ({
-    ts: now,
+    ts: count > 1 ? now - (count - 1 - k) : now,
     navId: current.navId,
     frameId: frameId,
     frame: frame,
@@ -478,7 +483,7 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
   }));
 
   let result;
-  if (docId) result = await store.mergeDocEntries(tabId, docId, entries, parsed.mode === "snapshot");
+  if (docId) result = await store.mergeDocEntries(tabId, docId, entries, parsed.mode === "snapshot", parsed.reset === true);
   else if (parsed.mode === "snapshot") result = await store.replaceNavFrameEvents(tabId, current.navId, frameId, entries);
   else result = await store.appendEvents(tabId, entries);
 
