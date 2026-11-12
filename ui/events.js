@@ -1,4 +1,4 @@
-import { $, eventLabel, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree, dataPaths } from "./util.js";
+import { $, eventLabel, eventNameOf, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree, dataPaths } from "./util.js";
 import { state, frameEvents } from "./store.js";
 
 let ctx;
@@ -266,6 +266,7 @@ function selectedEntry() {
 // "ecommerce.items.3.item_category2" deve trovare l'evento che ha quel parametro sul quarto
 // item, anche se nel JSON il path non compare come testo.
 const pathCache = new WeakMap();
+const textCache = new WeakMap();
 
 function pathsOf(data) {
   if (!data || typeof data !== "object") return [];
@@ -277,10 +278,22 @@ function pathsOf(data) {
   return paths;
 }
 
+// Il testo su cui si cerca si calcola una volta per push: JSON.stringify a ogni tasto su 500
+// eventi grossi si sente, e il push cambia solo quando il background ne manda uno nuovo.
+function textOf(entry) {
+  const data = entry.data;
+  if (!data || typeof data !== "object") return String(data == null ? "" : data).toLowerCase();
+  let text = textCache.get(data);
+  if (text == null) {
+    text = (eventLabel(data) + " " + JSON.stringify(data)).toLowerCase();
+    textCache.set(data, text);
+  }
+  return text;
+}
+
 function matches(entry) {
   if (!searchQuery) return true;
-  const hay = (eventLabel(entry.data) + " " + JSON.stringify(entry.data)).toLowerCase();
-  if (hay.indexOf(searchQuery) !== -1) return true;
+  if (textOf(entry).indexOf(searchQuery) !== -1) return true;
   return pathsOf(entry.data).some((path) => path.toLowerCase().indexOf(searchQuery) !== -1);
 }
 
@@ -474,9 +487,12 @@ function eventRow(entry) {
   row.dataset.index = entry.i;
   if (entry.i === vs().selected) row.classList.add("active");
 
-  // Eventi di sistema (gtm.*, messaggi senza event) in tono minore: risaltano quelli di business.
-  const name = entry.data && typeof entry.data.event === "string" ? entry.data.event : "";
-  if (!name || name.startsWith("gtm.")) row.classList.add("is-system");
+  // Tre tipi di riga: evento di business (in evidenza), evento di sistema gtm.* (tono minore),
+  // push senza event — in un dataLayer vecchio (UA) il primo push sono le variabili di pagina,
+  // che si leggono, non sono rumore.
+  const name = eventNameOf(entry.data);
+  if (!name) row.classList.add("is-data");
+  else if (name.startsWith("gtm.")) row.classList.add("is-system");
   row.appendChild(el("span", "event-num", String(entry.i)));
   row.appendChild(el("span", "event-name", eventLabel(entry.data)));
   row.appendChild(el("span", "event-time", formatTime(entry.ts).slice(0, 8)));
@@ -505,6 +521,7 @@ function navDivider(session, navId) {
   const wrap = el("div", "nav-divider is-toggle" + (collapsed ? " is-collapsed" : ""));
   wrap.tabIndex = 0;
   wrap.setAttribute("role", "button");
+  wrap.setAttribute("aria-expanded", collapsed ? "false" : "true");
   wrap.title = collapsed ? "Mostra gli eventi di questa pagina" : "Nascondi gli eventi di questa pagina";
   const caret = el("span", "nav-caret");
   caret.setAttribute("aria-hidden", "true");

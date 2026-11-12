@@ -26,6 +26,15 @@ let collectView;
 let settingsView;
 let currentView = "events";
 let toastTimer;
+let unpinTimer = null;
+
+// Toglie lo stato "conferma in sospeso" dalla ✕ (scade da sola dopo 3 secondi).
+function disarmUnpin() {
+  if (unpinTimer) clearTimeout(unpinTimer);
+  unpinTimer = null;
+  const btn = $("#target-unpin");
+  if (btn) btn.classList.remove("is-armed");
+}
 
 const ctx = {
   showView: (name) => showView(name),
@@ -143,6 +152,8 @@ function renderTargetBar() {
   }
   hostEl.disabled = state.tabId == null;
   unpinBtn.classList.toggle("is-hidden", !target);
+  // La ✕ azzera gli eventi: se il target sparisce (o cambia) la conferma in sospeso decade.
+  if (!target) disarmUnpin();
 
   $("#target-pin-strip").classList.toggle("is-hidden", !canPin);
   $("#target-pin-strip").classList.toggle("is-switch", !!target);
@@ -232,7 +243,18 @@ function wireChrome() {
     pressedTabId = null;
   });
   $("#target-host").addEventListener("click", () => focusTarget());
-  $("#target-unpin").addEventListener("click", () => unpin());
+  // La ✕ chiude la sessione e cancella gli eventi: due click, con 3 secondi per il secondo,
+  // come "Azzera" nella scheda UAT. Un click solo, di sfuggita, non deve buttare lo storico.
+  $("#target-unpin").addEventListener("click", () => {
+    if (unpinTimer) {
+      disarmUnpin();
+      unpin();
+      return;
+    }
+    $("#target-unpin").classList.add("is-armed");
+    unpinTimer = setTimeout(disarmUnpin, 3000);
+    toast("Premi di nuovo la ✕ per chiudere e azzerare gli eventi");
+  });
 
   // L'ingranaggio apre e chiude le impostazioni.
   $("#settings-toggle").addEventListener("click", () => showView(currentView === "settings" ? "events" : "settings"));
@@ -247,7 +269,9 @@ function showView(name) {
   };
   Object.keys(views).forEach((key) => views[key].classList.toggle("is-hidden", key !== name));
   document.querySelectorAll(".tab-btn[data-view]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === name);
+    const active = btn.dataset.view === name;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
   });
   $(".app").classList.toggle("is-settings", name === "settings");
   renderAll();

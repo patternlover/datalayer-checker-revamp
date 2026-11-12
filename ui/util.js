@@ -1,3 +1,7 @@
+import { eventNameOf } from "../lib/event-name.js";
+
+export { eventNameOf };
+
 export const $ = (selector, root) => (root || document).querySelector(selector);
 
 export const EVENT_LABELS = {
@@ -19,11 +23,11 @@ export const EVENT_LABELS = {
   "gtm.pageError": "JavaScript Error",
 };
 
-export function eventLabel(obj) {
-  if (!obj || typeof obj !== "object") return "Message";
-  if (typeof obj.event === "string") return EVENT_LABELS[obj.event] || obj.event;
-  if (typeof obj["0"] !== "undefined") return String(obj["0"]);
-  return "Message";
+export function eventLabel(data) {
+  const name = eventNameOf(data);
+  if (name) return EVENT_LABELS[name] || name;
+  // Non è rumore di sistema: è un push senza event (variabili di pagina, messaggi).
+  return "Senza event";
 }
 
 // Ambiente di provenienza di un evento/hit: "top" o "pixel" (sessioni legacy: dedotto da frameId).

@@ -34,8 +34,8 @@
 
       <nav class="toolbar">
         <div class="tabs" role="tablist">
-          <button class="tab-btn active" type="button" data-view="events" role="tab">Eventi</button>
-          <button class="tab-btn" type="button" data-view="uat" role="tab">UAT</button>
+          <button class="tab-btn active" type="button" data-view="events" role="tab" aria-selected="true">Eventi</button>
+          <button class="tab-btn" type="button" data-view="uat" role="tab" aria-selected="false">UAT</button>
         </div>
         <div id="env-select" class="seg is-hidden" role="group" aria-label="Ambiente da visualizzare">
           <button type="button" class="seg-btn" data-env="top_frame" title="dataLayer della pagina (T)">Top <span class="seg-count is-hidden" data-frame="top">0</span></button>
@@ -46,7 +46,7 @@
       <main id="events-view" class="view split-view">
         <aside class="events-sidebar">
           <div class="search-wrap">
-            <input id="events-search" class="search-input" type="search" placeholder="Cerca per nome o valore" autocomplete="off" spellcheck="false" aria-label="Cerca eventi" />
+            <input id="events-search" class="search-input" type="search" placeholder="Cerca nome, valore o path" autocomplete="off" spellcheck="false" aria-label="Cerca per nome, valore o path" />
             <button id="search-clear" class="search-clear is-hidden" type="button" title="Pulisci ricerca" aria-label="Pulisci ricerca">✕</button>
           </div>
           <div id="events-list" class="events-list"></div>

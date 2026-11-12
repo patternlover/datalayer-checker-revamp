@@ -186,6 +186,12 @@ button:disabled {
     color: #fff;
 }
 
+/* Primo click sulla ✕: il pulsante si accende e aspetta il secondo click. */
+.target-unpin.is-armed {
+    background: var(--danger);
+    color: #fff;
+}
+
 .header-actions {
     flex: 0 0 auto;
     display: flex;
@@ -652,6 +658,15 @@ body.is-splitting {
     font-size: 12px;
     font-weight: 450;
     color: var(--faint);
+}
+
+/* Push senza event (dataLayer vecchio: variabili di pagina, messaggi): si leggono, ma non sono
+   eventi di business. Monospaziato e in tono medio, non grigio come il rumore di gtm.* */
+.event-row.is-data .event-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
 }
 
 .event-row.is-system.active .event-name {
@@ -1269,11 +1284,11 @@ body.is-splitting {
 /* ---------- Popup agganciato all'icona ----------
    Chrome dimensiona il popup sul contenuto (min 25x25, max 800x600): se la misura non è
    dichiarata il riquadro collassa. 420x580 tiene la stessa vista impilata della finestra da
-   460, in meno spazio: lista sopra, dettaglio sotto. */
+   popup (600 è il massimo consentito): lista sopra, dettaglio sotto. */
 html.is-popup,
 html.is-popup body {
     width: 420px;
-    height: 580px;
+    height: 600px;
     min-width: 0;
 }
 
