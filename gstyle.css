@@ -807,19 +807,85 @@ body.is-splitting {
     overscroll-behavior: contain;
 }
 
+/* ---------- Push selezionato: albero di righe, ognuna copia il proprio path ---------- */
 .json {
-    margin: 0;
-    padding: 12px 14px 20px;
+    padding: 6px 0 20px;
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.6;
     color: var(--ink);
+    /* Il <pre> della scheda UAT ha bisogno delle righe intere: le righe dell'albero
+       rimettono pre-wrap per conto loro. */
     white-space: pre;
     tab-size: 2;
 }
 
+.json-row {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 1px 44px 1px 10px;
+    border: 0;
+    background: none;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.json-row:hover {
+    background: var(--tint);
+}
+
+.json-row:focus-visible {
+    outline-offset: -2px;
+}
+
+/* "copia" compare solo sulla riga sotto il puntatore: dice che il click fa qualcosa. */
+.json-row::after {
+    content: "copia";
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    font-family: var(--sans);
+    font-size: 9.5px;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--teal-3);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.json-row:hover::after,
+.json-row:focus-visible::after {
+    opacity: 0.85;
+}
+
+.json-close {
+    color: var(--faint);
+}
+
+.json-key {
+    color: var(--teal-2);
+}
+
+/* Stessi colori per il <pre> della scheda UAT (highlightJson). */
 .j-key {
     color: var(--teal-2);
+}
+
+/* Il parametro event è il nome del push: in grassetto, come nella lista. */
+.json-row.is-event .json-key {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.json-colon,
+.json-brace {
+    color: var(--faint);
 }
 
 .j-str {
@@ -1184,7 +1250,24 @@ body.is-splitting {
     transform: translate(-50%, 0);
 }
 
-/* ---------- Layout stretto (finestra o pannello laterale) ---------- */
+/* ---------- Popup agganciato all'icona ----------
+   Chrome dimensiona il popup sul contenuto (min 25x25, max 800x600): se la misura non è
+   dichiarata il riquadro collassa. 420x580 tiene la stessa vista impilata della finestra da
+   460, in meno spazio: lista sopra, dettaglio sotto. */
+html.is-popup,
+html.is-popup body {
+    width: 420px;
+    height: 580px;
+    min-width: 0;
+}
+
+/* Nel popup l'altezza è quella della finestra appena aperta, non 100vh (che dipende dal
+   contenuto: è proprio quello che Chrome sta misurando). */
+html.is-popup .app {
+    height: 100%;
+}
+
+/* ---------- Layout stretto (popup, finestra o pannello laterale) ---------- */
 @media (max-width: 620px) {
     #events-view {
         flex-direction: column;

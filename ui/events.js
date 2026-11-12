@@ -1,4 +1,4 @@
-import { $, eventLabel, formatTime, copyText, pathnameOf, el, sheetCell, highlightJson } from "./util.js";
+import { $, eventLabel, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree } from "./util.js";
 import { state, frameEvents } from "./store.js";
 
 let ctx;
@@ -215,6 +215,15 @@ function bind() {
     // Stesso formato della Copia UAT: incollabile direttamente in una cella di Sheets.
     const ok = await copyText(sheetCell(entry.data));
     ctx.toast(ok ? "Copiato per Sheets" : "Copia non riuscita");
+  });
+
+  // Click su una riga del push: il path finisce negli appunti. È il giro più corto verso una
+  // Data Layer Variable di GTM: clicchi il parametro, incolli nel nome della variabile.
+  els.detailJson.addEventListener("click", async (e) => {
+    const row = e.target.closest(".json-row");
+    if (!row || !row.dataset.path) return;
+    const path = row.dataset.path;
+    ctx.toast((await copyText(path)) ? "Copiato " + path : "Copia non riuscita");
   });
 }
 
@@ -473,9 +482,9 @@ function renderDetail(session) {
   els.detailName.textContent = eventLabel(entry.data);
   els.detailTime.textContent = formatTime(entry.ts);
   els.detailTime.title = entry.url || "";
-  // Il JSON si ridisegna solo se cambia evento: lo scroll del dettaglio resta dov'è.
+  // Il push si ridisegna solo se cambia evento: lo scroll del dettaglio resta dov'è.
   if (els.detailJson.dataset.entry !== String(entry.i)) {
-    els.detailJson.innerHTML = highlightJson(entry.data);
+    els.detailJson.replaceChildren(renderJsonTree(entry.data));
     els.detailJson.dataset.entry = String(entry.i);
     els.detailBody.scrollTop = 0;
   }

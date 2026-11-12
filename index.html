@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DataLayer Checker Revamp</title>
+    <script src="scripts/popupboot.js"></script>
     <link rel="stylesheet" href="gstyle.css" />
   </head>
   <body>
@@ -65,7 +66,7 @@
           <div id="containers-strip" class="containers-strip is-hidden"></div>
           <div id="detail-body" class="detail-body">
             <div id="empty-state" class="empty-state"></div>
-            <pre id="detail-json" class="json is-hidden"></pre>
+            <div id="detail-json" class="json is-hidden"></div>
           </div>
         </section>
       </main>
@@ -99,6 +100,7 @@
             <h3>Apertura</h3>
             <p class="setting-desc">Cosa succede quando clicchi l'icona dell'estensione.</p>
             <div class="radio-list">
+              <label class="radio"><input type="radio" name="uimode" value="popup" /><span><strong>Popup</strong><small>Il riquadro sotto l'icona: si apre al click e si chiude cliccando altrove. Consigliato.</small></span></label>
               <label class="radio"><input type="radio" name="uimode" value="window" /><span><strong>Finestra separata</strong><small>Resta aperta mentre lavori su altre tab. Funziona anche su Arc.</small></span></label>
               <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span><strong>Pannello laterale</strong><small>Solo Chrome.</small></span></label>
             </div>

@@ -30,18 +30,28 @@ function showVersion() {
   el.textContent = "v" + chrome.runtime.getManifest().version + " · uso interno";
 }
 
-// Modalità di apertura: finestra separata (default, anche Arc) o pannello laterale (Chrome).
+// Modalità di apertura: popup (default, come le altre estensioni), finestra separata
+// (funziona anche su Arc) o pannello laterale (solo Chrome).
+const UI_MODES = ["popup", "window", "sidepanel"];
+const UI_MODE_LABELS = {
+  popup: "L'icona aprirà il popup",
+  window: "L'icona aprirà la finestra separata",
+  sidepanel: "L'icona aprirà il pannello laterale",
+};
+
 async function initUiMode() {
   const radios = document.querySelectorAll('input[name="uimode"]');
   if (!chrome.sidePanel) $("#uimode-sidepanel").classList.add("is-hidden");
   const stored = await chrome.storage.local.get("dlcUiMode");
-  const mode = stored.dlcUiMode === "sidepanel" ? "sidepanel" : "window";
+  // Le versioni fino alla 1.6 scrivevano solo "window"/"sidepanel": chi aveva scelto la
+  // finestra resta sulla finestra, tutti gli altri passano al nuovo default, il popup.
+  const mode = UI_MODES.includes(stored.dlcUiMode) ? stored.dlcUiMode : "popup";
   radios.forEach((radio) => {
     radio.checked = radio.value === mode;
     radio.addEventListener("change", async () => {
       if (!radio.checked) return;
       await chrome.storage.local.set({ dlcUiMode: radio.value });
-      ctx.toast(radio.value === "sidepanel" ? "L'icona aprirà il pannello laterale" : "L'icona aprirà la finestra separata");
+      ctx.toast(UI_MODE_LABELS[radio.value] || "Apertura aggiornata");
     });
   });
 }

@@ -17,25 +17,34 @@ const capturePorts = new Map();
 const uiPorts = new Set();
 
 // ---------- Apertura UI ----------
-// Default: finestra separata persistente (funziona ovunque, anche su Arc che non supporta
-// il side panel). Opzionale su Chrome: pannello laterale. Il popup non si usa più perché
-// si chiude a ogni cambio di focus.
-const UI_MODE_KEY = "dlcUiMode"; // "window" | "sidepanel"
+// Default: popup agganciato all'icona, come le altre estensioni (si apre al click e si chiude
+// cliccando altrove). In alternativa finestra separata persistente (funziona ovunque, anche su
+// Arc che non supporta il side panel) o pannello laterale (solo Chrome).
+const UI_MODE_KEY = "dlcUiMode"; // "popup" | "window" | "sidepanel"
 const UI_WIN_KEY = "dlcUiWindow"; // { id } in storage.session
 const UI_BOUNDS_KEY = "dlcUiBounds"; // { left, top, width, height } in storage.local
+const UI_POPUP_URL = "index.html?popup=1";
 
 async function uiMode() {
   const stored = await chrome.storage.local.get(UI_MODE_KEY);
-  return stored[UI_MODE_KEY] === "sidepanel" && chrome.sidePanel ? "sidepanel" : "window";
+  const mode = stored[UI_MODE_KEY];
+  if (mode === "window") return "window";
+  if (mode === "sidepanel" && chrome.sidePanel) return "sidepanel";
+  return "popup";
 }
 
-async function enablePanel() {
-  if (!chrome.sidePanel || !chrome.sidePanel.setPanelBehavior) return;
+// Popup e finestra si escludono a vicenda: con un popup dichiarato Chrome non emette
+// action.onClicked, quindi per le altre modalità il popup va tolto (stringa vuota).
+async function syncUiMode() {
   const mode = await uiMode();
-  // Con "sidepanel" ci pensa Chrome; con "window" arriva action.onClicked e apriamo la finestra.
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: mode === "sidepanel" }).catch(() => {});
+  try {
+    if (chrome.action.setPopup) await chrome.action.setPopup({ popup: mode === "popup" ? UI_POPUP_URL : "" });
+  } catch (error) {}
+  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: mode === "sidepanel" }).catch(() => {});
+  }
 }
-enablePanel();
+syncUiMode();
 
 const UI_URL = chrome.runtime.getURL("index.html");
 
@@ -90,6 +99,7 @@ async function openUiWindow() {
   await chrome.tabs.create({ url: UI_URL }).catch(() => {});
 }
 
+// Arriva solo quando il popup è tolto, cioè nelle modalità finestra e pannello laterale.
 chrome.action.onClicked.addListener(() => {
   openUiWindow();
 });
@@ -123,7 +133,7 @@ chrome.windows.onRemoved.addListener(async (windowId) => {
 
 // Dopo un riavvio del browser i tabId cambiano: si conserva solo l'host da riagganciare.
 chrome.runtime.onStartup.addListener(async () => {
-  enablePanel();
+  syncUiMode();
   const target = await getTarget();
   if (target && target.tabId != null) await setTarget({ ...target, tabId: null, orphanTabId: null });
 });
@@ -165,6 +175,7 @@ chrome.runtime.onInstalled.addListener(() => {
   // Pulizia: le vecchie checklist UAT non sono più usate.
   chrome.storage.local.remove("uatChecklists").catch(() => {});
   syncInjectorScripts();
+  syncUiMode();
 });
 chrome.runtime.onStartup.addListener(() => syncInjectorScripts());
 
@@ -189,7 +200,7 @@ async function injectBannerAllTabs(extraDomains) {
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes[UI_MODE_KEY]) enablePanel();
+  if (area === "local" && changes[UI_MODE_KEY]) syncUiMode();
   if (area !== "sync") return;
   if (changes.gtmcodepush || changes.gtmDomains) {
     syncInjectorScripts();

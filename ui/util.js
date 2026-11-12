@@ -186,6 +186,115 @@ export function highlightJson(value) {
   );
 }
 
+// ---------- Albero del push: ogni riga porta il proprio path ----------
+// Il <pre> JSON non basta più: il path di un parametro non si legge dalla formattazione, ma
+// dalla gerarchia. Ogni riga è un pulsante che copia il path nel formato che vuole il nome di
+// una Data Layer Variable di GTM: chiavi unite da punto, indici di array come numero
+// (ecommerce.items.0.item_id).
+
+function pathWith(parent, key) {
+  return parent ? parent + "." + key : String(key);
+}
+
+function jsonValueNode(value) {
+  const node = document.createElement("span");
+  if (value === null) {
+    node.className = "json-val j-lit";
+    node.textContent = "null";
+    return node;
+  }
+  if (typeof value === "string") {
+    node.className = "json-val j-str";
+    node.textContent = '"' + value + '"';
+    return node;
+  }
+  if (typeof value === "number") {
+    node.className = "json-val j-num";
+    node.textContent = String(value);
+    return node;
+  }
+  node.className = "json-val j-lit";
+  node.textContent = String(value);
+  return node;
+}
+
+function jsonRow(key, path, depth, marker) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = key === "event" ? "json-row is-event" : "json-row";
+  row.dataset.path = path;
+  row.style.paddingLeft = 10 + depth * 15 + "px";
+  row.title = "Copia " + path;
+  const name = document.createElement("span");
+  name.className = "json-key";
+  name.textContent = key;
+  row.appendChild(name);
+  if (marker) {
+    row.appendChild(document.createTextNode(" "));
+    const brace = document.createElement("span");
+    brace.className = "json-brace";
+    brace.textContent = marker;
+    row.appendChild(brace);
+    return row;
+  }
+  const colon = document.createElement("span");
+  colon.className = "json-colon";
+  colon.textContent = ": ";
+  row.appendChild(colon);
+  return row;
+}
+
+function jsonCloseRow(depth, marker) {
+  const row = document.createElement("div");
+  row.className = "json-close";
+  row.style.paddingLeft = 10 + depth * 15 + "px";
+  row.textContent = marker;
+  return row;
+}
+
+// Restituisce il frammento già pronto: le righe con figli mostrano la graffa aperta e quella
+// di chiusura non è cliccabile (non è un path).
+export function renderJsonTree(data) {
+  const frag = document.createDocumentFragment();
+  // Push non oggetto (una stringa, un numero): niente path da copiare, solo il valore.
+  if (data === null || typeof data !== "object") {
+    const line = document.createElement("div");
+    line.className = "json-close";
+    line.style.paddingLeft = "10px";
+    const value = jsonValueNode(data);
+    line.appendChild(value);
+    frag.appendChild(line);
+    return frag;
+  }
+  const keys = Object.keys(data);
+  if (!keys.length) {
+    frag.appendChild(jsonCloseRow(0, Array.isArray(data) ? "[]" : "{}"));
+    return frag;
+  }
+
+  const walk = (value, key, path, depth) => {
+    const isObject = value !== null && typeof value === "object";
+    if (!isObject) {
+      const row = jsonRow(key, path, depth, null);
+      row.appendChild(jsonValueNode(value));
+      frag.appendChild(row);
+      return;
+    }
+    const isArray = Array.isArray(value);
+    const children = Object.keys(value);
+    if (!children.length) {
+      frag.appendChild(jsonRow(key, path, depth, isArray ? "[]" : "{}"));
+      return;
+    }
+    frag.appendChild(jsonRow(key, path, depth, isArray ? "[" : "{"));
+    children.forEach((child) => walk(value[child], child, pathWith(path, child), depth + 1));
+    frag.appendChild(jsonCloseRow(depth, isArray ? "]" : "}"));
+  };
+
+  keys.forEach((key) => walk(data[key], key, pathWith("", key), 0));
+  return frag;
+}
+
 export function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;

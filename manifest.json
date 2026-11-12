@@ -6,6 +6,7 @@
          "32": "images/icon32.png",
          "48": "images/icon48.png"
       },
+      "default_popup": "index.html?popup=1",
       "default_title": "DataLayer Checker Revamp"
    },
    "side_panel": {
@@ -27,7 +28,7 @@
    "minimum_chrome_version": "116",
    "name": "DataLayer Checker Revamp",
    "permissions": [ "scripting", "webNavigation", "webRequest", "storage", "clipboardWrite", "sidePanel" ],
-   "version": "1.6.0",
+   "version": "1.7.0",
    "web_accessible_resources": [ {
       "matches": [ "https://*/*", "http://localhost/*", "http://127.0.0.1/*" ],
       "resources": [ "scripts/vendor.js" ]

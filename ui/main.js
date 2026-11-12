@@ -47,7 +47,21 @@ const ctx = {
   },
 };
 
+// scripts/popupboot.js riconosce il popup prima del primo disegno (serve a non far collassare
+// il riquadro). Se nessuno dei due segnali sincroni ha funzionato, lo si chiede al runtime:
+// meglio aggiungere la classe un istante dopo che restare senza misura.
+async function ensurePopupMode() {
+  const root = document.documentElement;
+  if (root.classList.contains("is-popup")) return;
+  try {
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ["POPUP"] });
+    const here = location.origin + location.pathname;
+    if (contexts.some((c) => c.documentUrl && c.documentUrl.startsWith(here))) root.classList.add("is-popup");
+  } catch (e) {}
+}
+
 async function boot() {
+  await ensurePopupMode();
   await loadTarget();
   await refreshTabInfo();
   await refreshActive();
