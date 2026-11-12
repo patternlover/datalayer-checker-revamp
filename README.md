@@ -42,7 +42,7 @@ gli eventi raccolti.
 - **Top / Pixel** — il `dataLayer` dei Shopify Custom Pixel sta in un iframe e viene catturato in
   parallelo: il selettore (o `T` / `P`) cambia solo la vista, senza perdere dati.
 - **DataLayer vecchi e UA** — funziona anche con i push di una volta: `dataLayer.push(arguments)`
-  e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Senza event»,
+  e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Message»,
   leggibili ma distinte dagli eventi di business).
 - **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**: il pannello segna quali
   eventi sono già scattati (Top o Pixel, con l'ora) e **Copia UAT** dà il blocco da incollare.

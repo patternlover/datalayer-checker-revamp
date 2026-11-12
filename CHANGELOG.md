@@ -4,6 +4,11 @@ Ogni versione corrisponde alla `version` in `manifest.json`, a un tag git (`v1.9
 commit su `main`. Per riprendere una versione vecchia: `git checkout v1.7.0`, oppure dal tag su
 GitHub **Download ZIP** e la cartella si carica con "Carica estensione non pacchettizzata".
 
+## 1.9.1 — 2026-11-12
+
+- Il push senza `event` si chiama di nuovo **Message** (era «Senza event»): nome neutro e già
+  noto a chi arriva dalle versioni precedenti. Lo stile della riga resta distinto da `gtm.*`.
+
 ## 1.9.0 — 2026-11-12
 
 - **dataLayer non standard**: il nome dell'evento si legge anche da `dataLayer.push(arguments)`

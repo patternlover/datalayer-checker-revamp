@@ -26,8 +26,8 @@ export const EVENT_LABELS = {
 export function eventLabel(data) {
   const name = eventNameOf(data);
   if (name) return EVENT_LABELS[name] || name;
-  // Non è rumore di sistema: è un push senza event (variabili di pagina, messaggi).
-  return "Senza event";
+  // Push senza event (variabili di pagina, messaggi): stesso nome neutro di sempre.
+  return "Message";
 }
 
 // Ambiente di provenienza di un evento/hit: "top" o "pixel" (sessioni legacy: dedotto da frameId).
