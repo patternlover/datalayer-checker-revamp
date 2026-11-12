@@ -402,18 +402,12 @@ function renderList(session, events) {
 
   if (gap) els.list.appendChild(pageGapNotice(gap));
 
-  // Quanti eventi per gruppo: serve all'intestazione per dire cosa nasconde quando è chiusa.
-  const counts = {};
-  filtered.forEach((entry) => {
-    counts[entry.navId] = (counts[entry.navId] || 0) + 1;
-  });
-
   let currentNavId = null;
   for (let idx = filtered.length - 1; idx >= 0; idx--) {
     const entry = filtered[idx];
     if (entry.navId !== currentNavId) {
       currentNavId = entry.navId;
-      els.list.appendChild(navDivider(session, entry.navId, counts[entry.navId] || 0));
+      els.list.appendChild(navDivider(session, entry.navId));
     }
     // Gruppo chiuso: l'intestazione resta (è il modo per riaprirlo), le righe no.
     if (isCollapsed(entry.navId)) continue;
@@ -506,7 +500,7 @@ function toggleCollapsed(navId) {
   render();
 }
 
-function navDivider(session, navId, count) {
+function navDivider(session, navId) {
   const marker = session && session.nav ? session.nav.find((m) => m.navId === navId) : null;
   const label = marker && marker.type === "spa" ? "Navigazione SPA" : "Navigazione";
   const collapsed = isCollapsed(navId);
@@ -522,7 +516,6 @@ function navDivider(session, navId, count) {
     wrap.title += "\n" + marker.url;
     wrap.appendChild(el("span", "nav-divider-url", pathnameOf(marker.url)));
   }
-  if (collapsed) wrap.appendChild(el("span", "nav-hidden", count === 1 ? "1 evento" : count + " eventi"));
   wrap.addEventListener("click", () => toggleCollapsed(navId));
   wrap.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;

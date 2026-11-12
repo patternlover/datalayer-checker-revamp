@@ -196,6 +196,24 @@ function pathWith(parent, key) {
   return parent ? parent + "." + key : String(key);
 }
 
+// Il nome del push va sempre in cima: è la prima cosa che si guarda, mentre la posizione
+// delle chiavi la decide chi ha fatto il push (a volte ecommerce prima, a volte in ordine
+// alfabetico). Vale solo al livello radice.
+function keysEventFirst(keys) {
+  const at = keys.indexOf("event");
+  if (at <= 0) return keys;
+  return ["event"].concat(keys.slice(0, at), keys.slice(at + 1));
+}
+
+// Copia superficiale con event in cima: serve a chi mostra il push come JSON (scheda UAT).
+export function eventFirst(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const keys = keysEventFirst(Object.keys(data));
+  const out = {};
+  keys.forEach((key) => (out[key] = data[key]));
+  return out;
+}
+
 function jsonValueNode(value) {
   const node = document.createElement("span");
   node.setAttribute("role", "button");
@@ -273,7 +291,7 @@ export function renderJsonTree(data) {
     frag.appendChild(line);
     return frag;
   }
-  const keys = Object.keys(data);
+  const keys = keysEventFirst(Object.keys(data));
   if (!keys.length) {
     frag.appendChild(jsonCloseRow(0, Array.isArray(data) ? "[]" : "{}"));
     return frag;

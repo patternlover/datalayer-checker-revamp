@@ -1,4 +1,4 @@
-import { $, el, formatTime, copyText, sheetCell, extractEventNames, highlightJson } from "./util.js";
+import { $, el, formatTime, copyText, sheetCell, extractEventNames, highlightJson, eventFirst } from "./util.js";
 import { state } from "./store.js";
 import { collectKey, parseNames, matcher } from "../lib/collect.js";
 
@@ -268,7 +268,7 @@ export function render() {
         body.appendChild(copyBtn);
         const pre = el("pre", "json collect-json");
         pre.dataset.name = rowName;
-        pre.innerHTML = highlightJson(item.data);
+        pre.innerHTML = highlightJson(eventFirst(item.data));
         body.appendChild(pre);
         row.appendChild(body);
       }

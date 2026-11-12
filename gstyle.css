@@ -714,14 +714,6 @@ body.is-splitting {
     transform: rotate(90deg);
 }
 
-.nav-hidden {
-    color: var(--faint);
-}
-
-.nav-hidden::before {
-    content: "· ";
-}
-
 .nav-divider:first-child {
     margin-top: 0;
 }

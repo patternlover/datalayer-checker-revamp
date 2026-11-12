@@ -39,7 +39,8 @@ L'estensione lavora su **una tab scelta da te**, non su quella col focus: la "ta
   path nel formato di una Data Layer Variable di GTM (`ecommerce.items.0.item_id`), **click sul
   valore** copia il valore; il testo si seleziona normalmente. La ricerca guarda anche i path,
   quindi `ecommerce.items.3.item_category2` trova l'evento che ha quel parametro sul quarto item.
-  Il click su un'intestazione di navigazione chiude o riapre quel gruppo. **Copia** dà l'evento
+  Il nome dell'evento è sempre la prima riga, qualunque ordine abbia il payload. Il click su
+  un'intestazione di navigazione chiude o riapre quel gruppo. **Copia** dà l'evento
   intero nel formato per Sheets. Il separatore fra lista e dettaglio si trascina e la misura resta.
 - **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**, il pannello segna
   quali eventi sono già scattati; **Copia UAT** dà il blocco da incollare. Vale per sito,
