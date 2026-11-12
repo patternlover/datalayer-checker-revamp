@@ -16,6 +16,7 @@ git clone https://github.com/patternlover/datalayer-checker-revamp.git
 3. Clicca l'icona: si apre il popup, come le altre estensioni.
 
 Nessun build. Per aggiornarla: `git pull` e poi **⟳** in `chrome://extensions`.
+Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
 
 ## Partire in 30 secondi
 
