@@ -198,36 +198,43 @@ function pathWith(parent, key) {
 
 function jsonValueNode(value) {
   const node = document.createElement("span");
+  node.setAttribute("role", "button");
+  node.tabIndex = 0;
   if (value === null) {
     node.className = "json-val j-lit";
     node.textContent = "null";
+    node.dataset.value = "null";
+    node.title = "Copia il valore";
     return node;
   }
   if (typeof value === "string") {
     node.className = "json-val j-str";
     node.textContent = '"' + value + '"';
+    node.dataset.value = value;
+    node.title = "Copia il valore";
     return node;
   }
-  if (typeof value === "number") {
-    node.className = "json-val j-num";
-    node.textContent = String(value);
-    return node;
-  }
-  node.className = "json-val j-lit";
+  node.className = typeof value === "number" ? "json-val j-num" : "json-val j-lit";
   node.textContent = String(value);
+  node.dataset.value = String(value);
+  node.title = "Copia il valore";
   return node;
 }
 
+// Due zone cliccabili per riga: il nome copia il path (per la Data Layer Variable), il valore
+// copia il valore. Sono <span>, non <button>: il testo del push deve restare selezionabile, e
+// in Chrome il contenuto di un button non si seleziona.
 function jsonRow(key, path, depth, marker) {
-  const row = document.createElement("button");
-  row.type = "button";
+  const row = document.createElement("div");
   row.className = key === "event" ? "json-row is-event" : "json-row";
-  row.dataset.path = path;
   row.style.paddingLeft = 10 + depth * 15 + "px";
-  row.title = "Copia " + path;
   const name = document.createElement("span");
   name.className = "json-key";
   name.textContent = key;
+  name.dataset.path = path;
+  name.setAttribute("role", "button");
+  name.tabIndex = 0;
+  name.title = "Copia il path: " + path;
   row.appendChild(name);
   if (marker) {
     row.appendChild(document.createTextNode(" "));
@@ -293,6 +300,20 @@ export function renderJsonTree(data) {
 
   keys.forEach((key) => walk(data[key], key, pathWith("", key), 0));
   return frag;
+}
+
+// Tutti i path (dotted) di un push, per la ricerca: cercando "ecommerce.items.3.item_category2"
+// si trova l'evento che ha quel parametro sul quarto item, non solo chi contiene quella stringa
+// in un valore. Gli indici degli array sono numeri, come nel path di una DLV.
+export function dataPaths(value) {
+  const out = [];
+  const walk = (val, path) => {
+    if (path) out.push(path);
+    if (val === null || typeof val !== "object") return;
+    Object.keys(val).forEach((key) => walk(val[key], pathWith(path, key)));
+  };
+  walk(value, "");
+  return out;
 }
 
 export function el(tag, className, text) {

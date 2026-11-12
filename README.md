@@ -28,16 +28,19 @@ L'estensione lavora su **una tab scelta da te**, non su quella col focus: la "ta
 
 1. Apri il sito in una tab normale, apri il popup, premi **Testa example.com**.
 2. Naviga: ogni push del `dataLayer` compare in tempo reale. Puoi andare su Sheets senza
-   perdere niente; **Passa a …** sposta il test, **✕** lo mette in pausa.
+   perdere niente; **Passa a …** sposta il test, **✕** chiude la sessione e azzera gli eventi
+   raccolti (lo stesso sito riparte pulito).
 3. Senza un sito cliente: in `docs/demo/` c'è un finto negozio —
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
 
 ## Le tre schede
 
-- **Eventi** — i push con ricerca e l'albero del push selezionato: **click su un parametro**
-  copia il suo path nel formato di una Data Layer Variable di GTM (`ecommerce.items.0.item_id`),
-  pronto da incollare. **Copia** dà invece l'evento intero nel formato per Sheets. Il separatore
-  fra lista e dettaglio si trascina e la misura resta.
+- **Eventi** — i push con ricerca e l'albero del push selezionato. **Click sul nome** copia il
+  path nel formato di una Data Layer Variable di GTM (`ecommerce.items.0.item_id`), **click sul
+  valore** copia il valore; il testo si seleziona normalmente. La ricerca guarda anche i path,
+  quindi `ecommerce.items.3.item_category2` trova l'evento che ha quel parametro sul quarto item.
+  Il click su un'intestazione di navigazione chiude o riapre quel gruppo. **Copia** dà l'evento
+  intero nel formato per Sheets. Il separatore fra lista e dettaglio si trascina e la misura resta.
 - **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**, il pannello segna
   quali eventi sono già scattati; **Copia UAT** dà il blocco da incollare. Vale per sito,
   sopravvive a refresh e riavvio, `*` è jolly.
@@ -46,8 +49,8 @@ L'estensione lavora su **una tab scelta da te**, non su quella col focus: la "ta
 ## Da sapere
 
 - **Apertura** — default **popup** agganciato all'icona: si apre al click e si chiude cliccando
-  altrove. Da *Impostazioni → Apertura* si passa a finestra separata (utile per lunghi debug e su
-  Arc) o al pannello laterale (solo Chrome).
+  altrove. Da *Impostazioni → Apertura* si passa a finestra separata (utile per debug lunghi) o al
+  pannello laterale (solo su Chrome).
 - **Top / Pixel** — il `dataLayer` dei Shopify Custom Pixel sta in un iframe, separato dalla
   pagina. L'estensione cattura sempre entrambi: il selettore (o `T` / `P`) cambia solo la vista.
 - **GTM Injector** — domini + snippet in *Impostazioni*, solo frame principale e solo `https`.

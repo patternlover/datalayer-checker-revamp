@@ -1,15 +1,15 @@
-import { $, eventLabel, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree } from "./util.js";
+import { $, eventLabel, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree, dataPaths } from "./util.js";
 import { state, frameEvents } from "./store.js";
 
 let ctx;
 let els;
 let searchQuery = "";
 
-// Selezione indipendente per ambiente: passando da Top a Pixel e ritorno
+// Selezione e gruppi chiusi indipendenti per ambiente: passando da Top a Pixel e ritorno
 // si ritrova esattamente l'evento che si stava guardando.
 const viewState = {
-  top: { selected: -1, follow: true },
-  pixel: { selected: -1, follow: true },
+  top: { selected: -1, follow: true, collapsed: [] },
+  pixel: { selected: -1, follow: true, collapsed: [] },
 };
 
 function vs() {
@@ -31,6 +31,7 @@ export async function restore() {
       if (saved[frame] && typeof saved[frame].selected === "number") {
         viewState[frame].selected = saved[frame].selected;
         viewState[frame].follow = saved[frame].follow !== false;
+        viewState[frame].collapsed = Array.isArray(saved[frame].collapsed) ? saved[frame].collapsed.filter((n) => typeof n === "number") : [];
         viewState[frame].restored = true;
       }
     });
@@ -217,14 +218,30 @@ function bind() {
     ctx.toast(ok ? "Copiato per Sheets" : "Copia non riuscita");
   });
 
-  // Click su una riga del push: il path finisce negli appunti. È il giro più corto verso una
-  // Data Layer Variable di GTM: clicchi il parametro, incolli nel nome della variabile.
-  els.detailJson.addEventListener("click", async (e) => {
-    const row = e.target.closest(".json-row");
-    if (!row || !row.dataset.path) return;
-    const path = row.dataset.path;
-    ctx.toast((await copyText(path)) ? "Copiato " + path : "Copia non riuscita");
+  // Il push è un albero con due zone di copia per riga: il nome copia il path (per la Data
+  // Layer Variable), il valore copia il valore. Se c'è una selezione di testo il click non
+  // copia: la si sta facendo per copiarla a mano.
+  els.detailJson.addEventListener("click", (e) => copyFromTree(e.target));
+  els.detailJson.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (copyFromTree(e.target)) e.preventDefault();
   });
+}
+
+function copyFromTree(target) {
+  const zone = target && target.closest ? target.closest(".json-key, .json-val") : null;
+  if (!zone) return false;
+  const selection = window.getSelection ? String(window.getSelection()) : "";
+  if (selection.length) return false;
+  const isPath = zone.classList.contains("json-key");
+  const text = isPath ? zone.dataset.path : zone.dataset.value;
+  if (text == null) return false;
+  copyText(text).then((ok) => {
+    if (!ok) return ctx.toast("Copia non riuscita");
+    if (isPath) ctx.toast("Path copiato: " + text);
+    else ctx.toast("Valore copiato: " + (text.length > 40 ? text.slice(0, 40) + "…" : text));
+  });
+  return true;
 }
 
 export function selectEvent(index, opts) {
@@ -246,10 +263,26 @@ function selectedEntry() {
   return frameEvents().find((entry) => entry.i === view.selected) || null;
 }
 
+// Un evento corrisponde alla ricerca sul nome/valori (testo) e sui path: cercare
+// "ecommerce.items.3.item_category2" deve trovare l'evento che ha quel parametro sul quarto
+// item, anche se nel JSON il path non compare come testo.
+const pathCache = new WeakMap();
+
+function pathsOf(data) {
+  if (!data || typeof data !== "object") return [];
+  let paths = pathCache.get(data);
+  if (!paths) {
+    paths = dataPaths(data);
+    pathCache.set(data, paths);
+  }
+  return paths;
+}
+
 function matches(entry) {
   if (!searchQuery) return true;
   const hay = (eventLabel(entry.data) + " " + JSON.stringify(entry.data)).toLowerCase();
-  return hay.indexOf(searchQuery) !== -1;
+  if (hay.indexOf(searchQuery) !== -1) return true;
+  return pathsOf(entry.data).some((path) => path.toLowerCase().indexOf(searchQuery) !== -1);
 }
 
 export function render() {
@@ -337,7 +370,15 @@ function renderList(session, events) {
 
   // Stessi eventi di prima: si aggiorna solo la riga attiva, senza ricostruire la lista.
   const key =
-    state.frame + "|" + searchQuery + "|" + (gap ? gap.marker.navId + ":" + gap.otherCount : "") + "|" + filtered.map((e) => e.i + ":" + e.navId).join(",");
+    state.frame +
+    "|" +
+    searchQuery +
+    "|" +
+    vs().collapsed.join(",") +
+    "|" +
+    (gap ? gap.marker.navId + ":" + gap.otherCount : "") +
+    "|" +
+    filtered.map((e) => e.i + ":" + e.navId).join(",");
   if (key === lastListKey && els.list.childElementCount) {
     const selected = String(vs().selected);
     els.list.querySelectorAll(".event-row").forEach((row) => row.classList.toggle("active", row.dataset.index === selected));
@@ -361,13 +402,21 @@ function renderList(session, events) {
 
   if (gap) els.list.appendChild(pageGapNotice(gap));
 
+  // Quanti eventi per gruppo: serve all'intestazione per dire cosa nasconde quando è chiusa.
+  const counts = {};
+  filtered.forEach((entry) => {
+    counts[entry.navId] = (counts[entry.navId] || 0) + 1;
+  });
+
   let currentNavId = null;
   for (let idx = filtered.length - 1; idx >= 0; idx--) {
     const entry = filtered[idx];
     if (entry.navId !== currentNavId) {
       currentNavId = entry.navId;
-      els.list.appendChild(navDivider(session, entry.navId));
+      els.list.appendChild(navDivider(session, entry.navId, counts[entry.navId] || 0));
     }
+    // Gruppo chiuso: l'intestazione resta (è il modo per riaprirlo), le righe no.
+    if (isCollapsed(entry.navId)) continue;
     els.list.appendChild(eventRow(entry));
   }
 
@@ -442,15 +491,44 @@ function eventRow(entry) {
   return row;
 }
 
-function navDivider(session, navId) {
+// Un click sull'intestazione chiude o riapre il gruppo: è l'unico comando, nessun altro
+// elemento in lista (chiudere una pagina vecchia è il gesto più frequente quando si naviga).
+function isCollapsed(navId) {
+  return vs().collapsed.indexOf(navId) !== -1;
+}
+
+function toggleCollapsed(navId) {
+  const view = vs();
+  const at = view.collapsed.indexOf(navId);
+  if (at === -1) view.collapsed.push(navId);
+  else view.collapsed.splice(at, 1);
+  persistViewState();
+  render();
+}
+
+function navDivider(session, navId, count) {
   const marker = session && session.nav ? session.nav.find((m) => m.navId === navId) : null;
   const label = marker && marker.type === "spa" ? "Navigazione SPA" : "Navigazione";
-  const wrap = el("div", "nav-divider");
+  const collapsed = isCollapsed(navId);
+  const wrap = el("div", "nav-divider is-toggle" + (collapsed ? " is-collapsed" : ""));
+  wrap.tabIndex = 0;
+  wrap.setAttribute("role", "button");
+  wrap.title = collapsed ? "Mostra gli eventi di questa pagina" : "Nascondi gli eventi di questa pagina";
+  const caret = el("span", "nav-caret");
+  caret.setAttribute("aria-hidden", "true");
+  wrap.appendChild(caret);
   wrap.appendChild(el("span", "nav-divider-label", "#" + navId + " · " + label));
   if (marker && marker.url) {
-    wrap.title = marker.url;
+    wrap.title += "\n" + marker.url;
     wrap.appendChild(el("span", "nav-divider-url", pathnameOf(marker.url)));
   }
+  if (collapsed) wrap.appendChild(el("span", "nav-hidden", count === 1 ? "1 evento" : count + " eventi"));
+  wrap.addEventListener("click", () => toggleCollapsed(navId));
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    toggleCollapsed(navId);
+  });
   return wrap;
 }
 

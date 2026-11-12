@@ -176,7 +176,8 @@ function setFrame(frame, opts) {
   renderAll();
 }
 
-// Selettore Top/Pixel visibile solo se la tab in test ha un Shopify Custom Pixel.
+// Selettore Top/Pixel visibile solo nella scheda Eventi (dove si leggono i due dataLayer) e
+// solo se la tab in test ha un Shopify Custom Pixel.
 // Il rilevamento è "appiccicoso" per la sessione: una volta visto, il selettore resta.
 function hasPixel() {
   const session = state.session;
@@ -185,9 +186,9 @@ function hasPixel() {
 }
 
 function renderEnvSelect() {
-  const show = hasPixel();
+  const show = hasPixel() && currentView === "events";
   $("#env-select").classList.toggle("is-hidden", !show);
-  if (!show && state.frame === "pixel") setFrame("top");
+  if (!hasPixel() && state.frame === "pixel") setFrame("top");
   renderEnvCounts();
 }
 
@@ -211,7 +212,7 @@ function wireChrome() {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target && e.target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-    if (!hasPixel()) return;
+    if (currentView !== "events" || !hasPixel()) return;
     if (e.key === "t" || e.key === "T") setFrame("top");
     else if (e.key === "p" || e.key === "P") setFrame("pixel");
   });

@@ -592,7 +592,14 @@ body.is-splitting {
     /* Lo scroll anchoring lo gestisce il codice (riga "ancora"): quello del browser lo duplicherebbe. */
     overflow-anchor: none;
     overscroll-behavior: contain;
-    padding: 2px 0 8px;
+    padding: 0 0 8px;
+}
+
+/* La prima intestazione di navigazione non deve staccare dalla ricerca: il bordo del campo basta. */
+.events-list > .nav-divider:first-child,
+.events-list > .page-gap:first-child .nav-divider {
+    margin-top: 0;
+    padding-top: 3px;
 }
 
 .event-row {
@@ -676,6 +683,43 @@ body.is-splitting {
     font-size: 11px;
     color: var(--muted);
     white-space: nowrap;
+}
+
+/* Solo l'intestazione di un gruppo vero si può chiudere; quella dell'avviso no. */
+.nav-divider.is-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.nav-divider.is-toggle:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+}
+
+/* Triangolo disegnato in CSS: aperto punta in basso, chiuso a destra. Niente glifi, che a
+   questa misura cadono su font diversi e diventano puntini. */
+.nav-caret {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 0;
+    height: 0;
+    border-left: 4px solid currentColor;
+    border-top: 3.5px solid transparent;
+    border-bottom: 3.5px solid transparent;
+    opacity: 0.6;
+    transition: transform 0.12s ease;
+}
+
+.nav-divider.is-toggle:not(.is-collapsed) .nav-caret {
+    transform: rotate(90deg);
+}
+
+.nav-hidden {
+    color: var(--faint);
+}
+
+.nav-hidden::before {
+    content: "· ";
 }
 
 .nav-divider:first-child {
@@ -807,13 +851,15 @@ body.is-splitting {
     overscroll-behavior: contain;
 }
 
-/* ---------- Push selezionato: albero di righe, ognuna copia il proprio path ---------- */
+/* ---------- Push selezionato: albero di righe, ognuna con due zone di copia ---------- */
 .json {
     padding: 6px 0 20px;
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.6;
     color: var(--ink);
+    /* Il testo del push si legge e si seleziona: serve anche copiarlo a mano. */
+    user-select: text;
     /* Il <pre> della scheda UAT ha bisogno delle righe intere: le righe dell'albero
        rimettono pre-wrap per conto loro. */
     white-space: pre;
@@ -821,47 +867,36 @@ body.is-splitting {
 }
 
 .json-row {
-    position: relative;
     display: block;
     width: 100%;
-    padding: 1px 44px 1px 10px;
-    border: 0;
-    background: none;
-    text-align: left;
-    font: inherit;
-    color: inherit;
+    padding: 1px 12px 1px 10px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
 .json-row:hover {
+    background: var(--surface-2);
+}
+
+/* Nome e valore sono due zone di copia distinte: il sottolineato dice quale stai per copiare. */
+.json-key,
+.json-val {
+    border-radius: 3px;
+    cursor: copy;
+}
+
+.json-key:hover,
+.json-val:hover,
+.json-key:focus-visible,
+.json-val:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.json-key:focus-visible,
+.json-val:focus-visible {
+    outline: none;
     background: var(--tint);
-}
-
-.json-row:focus-visible {
-    outline-offset: -2px;
-}
-
-/* "copia" compare solo sulla riga sotto il puntatore: dice che il click fa qualcosa. */
-.json-row::after {
-    content: "copia";
-    position: absolute;
-    top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
-    font-family: var(--sans);
-    font-size: 9.5px;
-    font-weight: 650;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--teal-3);
-    opacity: 0;
-    pointer-events: none;
-}
-
-.json-row:hover::after,
-.json-row:focus-visible::after {
-    opacity: 0.85;
 }
 
 .json-close {

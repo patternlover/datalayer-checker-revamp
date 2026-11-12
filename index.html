@@ -13,7 +13,7 @@
         <div id="target-bar" class="target">
           <span class="target-dot" aria-hidden="true"></span>
           <button id="target-host" class="target-host" type="button">Nessun sito in test</button>
-          <button id="target-unpin" class="target-unpin is-hidden" type="button" title="Smetti di testare questo sito" aria-label="Smetti di testare">
+          <button id="target-unpin" class="target-unpin is-hidden" type="button" title="Chiudi la sessione: smetti di testare e azzera gli eventi raccolti" aria-label="Chiudi la sessione">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
@@ -100,9 +100,9 @@
             <h3>Apertura</h3>
             <p class="setting-desc">Cosa succede quando clicchi l'icona dell'estensione.</p>
             <div class="radio-list">
-              <label class="radio"><input type="radio" name="uimode" value="popup" /><span><strong>Popup</strong><small>Il riquadro sotto l'icona: si apre al click e si chiude cliccando altrove. Consigliato.</small></span></label>
-              <label class="radio"><input type="radio" name="uimode" value="window" /><span><strong>Finestra separata</strong><small>Resta aperta mentre lavori su altre tab. Funziona anche su Arc.</small></span></label>
-              <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span><strong>Pannello laterale</strong><small>Solo Chrome.</small></span></label>
+              <label class="radio"><input type="radio" name="uimode" value="popup" /><span><strong>Popup</strong><small>Il riquadro si apre sotto l'icona e si chiude cliccando altrove. È la scelta consigliata.</small></span></label>
+              <label class="radio"><input type="radio" name="uimode" value="window" /><span><strong>Finestra separata</strong><small>Resta aperta mentre navighi e lavori su altre tab, finché non la chiudi.</small></span></label>
+              <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span><strong>Pannello laterale</strong><small>Dentro la finestra del browser, accanto alla pagina. Solo su Chrome.</small></span></label>
             </div>
           </section>
 

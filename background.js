@@ -725,7 +725,12 @@ async function pinTarget(tabId) {
 
 async function unpinTarget() {
   const target = await getTarget();
-  if (target && target.tabId != null) await stopSession(target.tabId);
+  if (target && target.tabId != null) {
+    // Chiudere la sessione azzera anche gli eventi: riaprire lo stesso sito deve partire da zero,
+    // non ritrovare lo storico di un debug finito. (La raccolta UAT resta: è per host, non per tab.)
+    await stopSession(target.tabId);
+    await clearSession(target.tabId);
+  }
   await setTarget(null);
 }
 
