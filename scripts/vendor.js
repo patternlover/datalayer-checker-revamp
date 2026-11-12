@@ -97,16 +97,31 @@
     return Array.isArray(dl) ? dl : null;
   }
 
+  // Nuovo ciclo del dataLayer: le posizioni ripartono da zero, quindi lo snapshot va mandato
+  // con reset esplicito (il background azzera gli eventi del documento e li rimette).
+  function restart(dl) {
+    ref = dl;
+    sent = dl.length;
+    tail = dl.length ? dl[dl.length - 1] : null;
+    post("snapshot", dl.slice(0), 0, true);
+  }
+
   function tick() {
     var dl = current();
     if (!dl) return;
     var last = dl.length ? dl[dl.length - 1] : null;
     if (dl !== ref) {
       // Array sostituito (dataLayer = [...]): un nuovo ciclo, le posizioni ripartono da zero.
-      ref = dl;
-      sent = dl.length;
-      tail = last;
-      post("snapshot", dl.slice(0), 0, true);
+      restart(dl);
+      return;
+    }
+    // L'ultimo elemento già inviato deve essere ancora lo stesso oggetto. Se non lo è, l'array
+    // non è cresciuto: è stato svuotato e riempito fra due poll. Il solo conteggio non basta,
+    // perché se il nuovo ciclo è più lungo del precedente la lunghezza cresce, e un append da
+    // metà array perderebbe i primi eventi del ciclo (che il background scarterebbe come
+    // posizioni già viste). Vale per dataLayer.length = 0 seguito da push, e per dataLayer = [].
+    if (sent > 0 && (dl.length < sent || dl[sent - 1] !== tail)) {
+      restart(dl);
       return;
     }
     if (dl.length > sent) {
@@ -114,24 +129,9 @@
       sent = dl.length;
       tail = last;
       post("append", items, sent - items.length);
-    } else if (dl.length < sent) {
-      // L'array si è accorciato: tipicamente dataLayer.length = 0 seguito da nuovi push, o
-      // dataLayer = [] in una SPA. Le posizioni ripartono da zero, quindi il documento va
-      // azzerato nel background (reset), non solo "accorciato": altrimenti i primi eventi
-      // del nuovo ciclo cadono su posizioni già viste e vengono scartati come duplicati.
-      sent = dl.length;
-      tail = last;
-      post("snapshot", dl.slice(0), 0, true);
-    } else if (sent > 0 && last !== tail) {
-      // Stessa lunghezza ma ultimo elemento diverso: l'array è stato svuotato e riempito fra
-      // due poll (dataLayer.length = 0 + push sincroni). Senza questo confronto il reset
-      // sarebbe invisibile e i primi eventi del nuovo ciclo andrebbero persi.
-      sent = dl.length;
-      tail = last;
-      post("snapshot", dl.slice(0), 0, true);
-    } else {
-      tail = last;
+      return;
     }
+    tail = last;
   }
 
   // Ogni start (anche su stream gi\u00e0 attivo, es. dopo riconnessione) invia lo snapshot completo:

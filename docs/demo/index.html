@@ -20,9 +20,10 @@
   <strong style="font-size:14px">Altri casi da provare</strong>
   <div class="row" style="flex-wrap:wrap">
     <button id="reset" style="background:#0b5856">dataLayer.length = 0</button>
+    <button id="reset-long" style="background:#b42318">reset + 8 push</button>
     <button id="spa" style="background:#13706d">Cambio pagina SPA</button>
   </div>
-  <p class="sub" style="margin:10px 0 0;font-size:12px">Il primo svuota il dataLayer e riparte: gli eventi nuovi devono comparire tutti. Il secondo cambia URL senza ricaricare: nella lista deve apparire un separatore &laquo;Navigazione SPA&raquo;.</p>
+  <p class="sub" style="margin:10px 0 0;font-size:12px">Il primo svuota il dataLayer e riparte: gli eventi nuovi devono comparire tutti. Il secondo è lo stesso caso, ma il nuovo ciclo è <em>più lungo</em> del precedente (era il caso in cui si perdevano i primi eventi): devono comparire tutti e 8. Il terzo cambia URL senza ricaricare: nella lista deve apparire un separatore &laquo;Navigazione SPA&raquo;.</p>
 </div>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -44,6 +45,16 @@
     window.dataLayer.push({event:"gtm.js","gtm.start":Date.now(),"gtm.uniqueEventId":90});
     window.dataLayer.push({event:"page_view",page_type:"cart",currency:"EUR"});
     window.dataLayer.push({event:"begin_checkout",ecommerce:{currency:"EUR",value:89}});
+  });
+  document.getElementById("reset-long").addEventListener("click", function () {
+    // Nuovo ciclo più lungo del precedente: la lunghezza cresce, quindi non basta contare gli
+    // elementi per capire che l'array è stato svuotato. Tutti e 8 gli eventi devono comparire.
+    window.dataLayer.length = 0;
+    ["gtm.js", "page_view", "dl_a", "dl_b", "dl_c", "dl_d", "dl_e", "dl_f"].forEach(function (name, k) {
+      var payload = { event: name, "gtm.uniqueEventId": 200 + k };
+      if (name === "gtm.js") payload["gtm.start"] = Date.now();
+      window.dataLayer.push(payload);
+    });
   });
   document.getElementById("spa").addEventListener("click", function () {
     history.pushState({}, "", "/carrello");
