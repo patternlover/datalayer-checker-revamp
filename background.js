@@ -23,6 +23,7 @@ const uiPorts = new Set();
 const UI_MODE_KEY = "dlcUiMode"; // "popup" | "window" | "sidepanel"
 const UI_WIN_KEY = "dlcUiWindow"; // { id } in storage.session
 const UI_BOUNDS_KEY = "dlcUiBounds"; // { left, top, width, height } in storage.local
+const SIDEPANEL_BROKEN_KEY = "dlcSidePanelBroken"; // true = qui il pannello laterale non si apre
 const UI_POPUP_URL = "index.html?popup=1";
 
 async function uiMode() {
@@ -35,13 +36,18 @@ async function uiMode() {
 
 // Popup e finestra si escludono a vicenda: con un popup dichiarato Chrome non emette
 // action.onClicked, quindi per le altre modalità il popup va tolto (stringa vuota).
+//
+// Il click resta SEMPRE nostro: `openPanelOnActionClick` lo prende il browser, e i browser che
+// espongono l'API senza mostrare il pannello (Arc) non lo restituiscono a nessuno: l'icona diventa
+// muta e l'unico modo per uscirne era rimuovere e ricaricare l'estensione. Con il click in mano
+// nostra il pannello si apre da `openFromAction()`, che può sempre ripiegare sulla finestra.
 async function syncUiMode() {
   const mode = await uiMode();
   try {
     if (chrome.action.setPopup) await chrome.action.setPopup({ popup: mode === "popup" ? UI_POPUP_URL : "" });
   } catch (error) {}
   if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
-    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: mode === "sidepanel" }).catch(() => {});
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
   }
 }
 syncUiMode();
@@ -99,12 +105,81 @@ async function openUiWindow() {
   await chrome.tabs.create({ url: UI_URL }).catch(() => {});
 }
 
+// Il pannello laterale si apre e poi si VERIFICA: l'API c'è anche dove il pannello non esiste
+// (Arc non lo implementa, ma `chrome.sidePanel` risponde). Se dopo l'apertura nessun documento del
+// pannello è vivo, il browser viene segnato come rotto, si apre la finestra e i click successivi
+// vanno dritti lì senza aspettare. Il segno dura fino al riavvio, così un aggiornamento del browser
+// che ripara il pannello lo riaccende da solo.
+async function sidePanelBroken() {
+  const stored = await chrome.storage.local.get(SIDEPANEL_BROKEN_KEY);
+  return stored[SIDEPANEL_BROKEN_KEY] === true;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Il documento del pannello in QUESTA finestra (o in una qualunque, se windowId è null).
+async function sidePanelDocument(windowId) {
+  if (!chrome.runtime.getContexts) return null;
+  try {
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ["SIDE_PANEL"] });
+    return (
+      contexts.find(
+        (c) =>
+          typeof c.documentUrl === "string" &&
+          c.documentUrl.startsWith(UI_URL) &&
+          (windowId == null || c.windowId == null || c.windowId === windowId)
+      ) || null
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+async function trySidePanel(tab) {
+  if (!chrome.sidePanel || typeof chrome.sidePanel.open !== "function") return false;
+  if (await sidePanelBroken()) return false;
+  const windowId = tab && tab.windowId != null ? tab.windowId : null;
+
+  // Già aperto: il click lo chiude, se il browser sa chiuderlo (Chrome 141+). Prima il toggle lo
+  // faceva `openPanelOnActionClick`, che però non restituiva mai il click all'estensione.
+  if (await sidePanelDocument(windowId)) {
+    if (typeof chrome.sidePanel.close === "function") {
+      try {
+        await chrome.sidePanel.close(windowId != null ? { windowId: windowId } : {});
+      } catch (error) {}
+    }
+    return true;
+  }
+
+  try {
+    await chrome.sidePanel.open(windowId != null ? { windowId: windowId } : {});
+  } catch (error) {
+    await chrome.storage.local.set({ [SIDEPANEL_BROKEN_KEY]: true });
+    return false;
+  }
+  for (let i = 0; i < 6; i++) {
+    if (await sidePanelDocument(windowId)) return true;
+    await sleep(100);
+  }
+  await chrome.storage.local.set({ [SIDEPANEL_BROKEN_KEY]: true });
+  return false;
+}
+
+async function openFromAction(tab) {
+  const mode = await uiMode();
+  if (mode === "sidepanel" && (await trySidePanel(tab))) return;
+  await openUiWindow();
+}
+
 // Arriva solo quando il popup è tolto, cioè nelle modalità finestra e pannello laterale.
-chrome.action.onClicked.addListener(() => {
-  openUiWindow();
+chrome.action.onClicked.addListener((tab) => {
+  openFromAction(tab);
 });
 // Usato dai test automatici (non si può cliccare l'icona della toolbar da Playwright).
 globalThis.__dlcOpenUi = openUiWindow;
+globalThis.__dlcOpenFromAction = openFromAction;
 
 // Ricorda posizione e dimensioni della finestra.
 if (chrome.windows.onBoundsChanged) {
@@ -134,6 +209,8 @@ chrome.windows.onRemoved.addListener(async (windowId) => {
 // Dopo un riavvio del browser i tabId cambiano: si conserva solo l'host da riagganciare.
 chrome.runtime.onStartup.addListener(async () => {
   syncUiMode();
+  // Un browser aggiornato può aver guadagnato il pannello laterale: si riprova.
+  await chrome.storage.local.remove(SIDEPANEL_BROKEN_KEY).catch(() => {});
   const target = await getTarget();
   if (target && target.tabId != null) await setTarget({ ...target, tabId: null, orphanTabId: null });
 });
@@ -521,13 +598,36 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
 }
 
 // ---------- Hit inspector (webRequest, observe only) ----------
+// Corpo della richiesta come lo dà webRequest: i provider di Omnibug sanno leggere una stringa
+// (JSON o form-urlencoded) e un oggetto. Si tiene una copia troncata: serve al «Copia cURL».
+const MAX_POST_CHARS = 2048;
+
+function postDataOf(body) {
+  if (!body) return "";
+  let text = "";
+  if (body.formData) {
+    const flat = {};
+    Object.keys(body.formData).forEach((key) => {
+      flat[key] = (body.formData[key] || []).join(",");
+    });
+    text = JSON.stringify(flat);
+  } else if (Array.isArray(body.raw) && body.raw.length) {
+    try {
+      text = body.raw.map((part) => (part && part.bytes ? new TextDecoder("utf-8").decode(part.bytes) : "")).join("");
+    } catch (error) {
+      return "";
+    }
+  }
+  return text.slice(0, MAX_POST_CHARS);
+}
+
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (details.tabId == null || details.tabId < 0) return;
     serial(details.tabId, () => handleHit(details));
   },
   { urls: VENDOR_URL_FILTERS },
-  []
+  ["requestBody"]
 );
 
 async function handleHit(details) {
@@ -535,7 +635,19 @@ async function handleHit(details) {
     const session = await store.get(details.tabId);
     if (!session || !session.active) return;
 
-    const decoded = decodeHit(details.url);
+    const postBody = postDataOf(details.requestBody);
+    // I container in pagina si leggono dall'URL (gtm.js e gtag/js) prima di decidere se la
+    // richiesta è una hit: gtag/js non è una hit per nessun provider, ma è il container GA4.
+    const containerIds = extractContainerIdsFromUrl(details.url);
+    if (containerIds.length) await store.mergePageContainers(details.tabId, containerIds);
+
+    // Nessun provider riconosce l'URL: la richiesta non è una hit, non va salvata.
+    const decoded = decodeHit(details.url, postBody);
+    if (!decoded) {
+      if (containerIds.length) broadcast(details.tabId, { type: "session", session: await store.get(details.tabId) });
+      return;
+    }
+
     const hit = {
       ts: Date.now(),
       navId: session.navId,
@@ -547,18 +659,18 @@ async function handleHit(details) {
       requestId: details.requestId,
       vendor: decoded.vendor,
       vendorLabel: decoded.vendorLabel,
+      docs: decoded.docs,
+      account: decoded.account,
+      requestType: decoded.requestType,
       eventName: decoded.eventName,
       path: decoded.path,
-      params: decoded.params,
-      userProps: decoded.userProps,
-      ids: decoded.ids,
+      groups: decoded.groups,
+      fields: decoded.fields,
+      postBody: postBody,
       eventIndex: null,
     };
     const { hit: storedHit, trimmed } = await store.appendHit(details.tabId, hit);
     if (!storedHit) return;
-
-    const containerIds = extractContainerIdsFromUrl(details.url);
-    if (containerIds.length) await store.mergePageContainers(details.tabId, containerIds);
 
     const updated = await store.get(details.tabId);
     let linkedEntry = null;

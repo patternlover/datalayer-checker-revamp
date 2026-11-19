@@ -16,7 +16,7 @@
       "service_worker": "background.js",
       "type": "module"
    },
-   "description": "Legge il dataLayer di una pagina e inietta un container GTM. Uso interno.",
+   "description": "Legge il dataLayer di una pagina, decodifica le hit dei vendor e inietta un container GTM. Uso interno.",
    "host_permissions": [ "https://*/*", "http://localhost/*", "http://127.0.0.1/*" ],
    "icons": {
       "128": "images/icon128.png",
@@ -27,8 +27,12 @@
    "manifest_version": 3,
    "minimum_chrome_version": "116",
    "name": "DataLayer Checker Revamp",
+   "options_ui": {
+      "page": "options.html",
+      "open_in_tab": true
+   },
    "permissions": [ "scripting", "webNavigation", "webRequest", "storage", "clipboardWrite", "sidePanel" ],
-   "version": "1.9.1",
+   "version": "1.10.0",
    "web_accessible_resources": [ {
       "matches": [ "https://*/*", "http://localhost/*", "http://127.0.0.1/*" ],
       "resources": [ "scripts/vendor.js" ]

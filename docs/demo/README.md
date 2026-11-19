@@ -32,5 +32,6 @@ Su Windows senza Python: `npx serve . -l 8080`.
   `add_to_cart` e `dl_view_cart` al click; tre pulsanti per i casi che rompono i dataLayer veri
   (svuotamento dell'array, svuotamento con ciclo nuovo più lungo, navigazione SPA).
 - Le hit sono `new Image().src` verso `google-analytics.com/g/collect` e `facebook.com/tr`: non
-  servono token né account, devono solo *partire* perché l'estensione le osservi. Oggi
-  l'estensione le raccoglie ma non le mostra: servono alla vista Hit, che è il prossimo lavoro.
+  servono token né account, devono solo *partire* perché l'estensione le osservi. Nella scheda
+  **Hit** devono comparire due righe decodificate (`add_to_cart` con `tid=G-DEMO123`, `AddToCart`
+  con l'ID della pagina), ciascuna collegata al proprio evento del dataLayer con `#n`.

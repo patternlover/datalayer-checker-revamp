@@ -4,6 +4,15 @@ Ogni versione corrisponde alla `version` in `manifest.json`, a un tag git (`v1.9
 
 Le voci qui sotto stanno su una riga per frase: è il testo che finisce nelle release di GitHub, che va a capo da solo in base alla larghezza. Non spezzare le righe a mano.
 
+## 1.10.0 — 2026-11-19
+
+- **Scheda Hit**: le chiamate di rete della pagina, decodificate. Non più nascoste dietro la correlazione: si vedono tutte, con `#n` su quelle vicine a un push del dataLayer.
+- I dizionari dei parametri sono quelli di **Omnibug** (MIT): GA4, Universal Analytics, GTM, Google Ads, Meta, TikTok, LinkedIn, Pinterest, Snapchat, Reddit, Microsoft Ads, Criteo, Hotjar, Clarity. I parametri hanno un nome leggibile e stanno in gruppi (Generale, Eventi, E-commerce…).
+- **Corpo POST** letto e decodificato (TikTok manda JSON, non query string); **cURL** copia la richiesta intera, corpo compreso.
+- Click sul nome di un parametro: copia la chiave grezza; sul valore: copia il valore. Filtri per vendor, ricerca su vendor, nome, valore e corpo POST. Il selettore Top/Pixel vale anche qui.
+- Pannello laterale: il click lo gestisce l'estensione, non il browser. Se il pannello non si apre davvero (Arc non implementa `chrome.sidePanel`) si apre la finestra separata e lo si dice in **Impostazioni**, invece di lasciare l'icona muta fino alla rimozione dell'estensione.
+- Nuova pagina **Opzioni estensione**: da `chrome://extensions` si rientra nella UI anche quando l'apertura scelta non funziona, senza rimuovere e ricaricare.
+
 ## 1.9.1 — 2026-11-12
 
 - Il push senza `event` si chiama di nuovo **Message** (era «Senza event»): nome neutro e già noto a chi arriva dalle versioni precedenti. Lo stile della riga resta distinto da `gtm.*`.

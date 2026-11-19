@@ -41,16 +41,34 @@ const UI_MODE_LABELS = {
 
 async function initUiMode() {
   const radios = document.querySelectorAll('input[name="uimode"]');
+  const note = $("#uimode-note");
+  const reset = $("#uimode-reset");
   if (!chrome.sidePanel) $("#uimode-sidepanel").classList.add("is-hidden");
-  const stored = await chrome.storage.local.get("dlcUiMode");
+  const stored = await chrome.storage.local.get(["dlcUiMode", "dlcSidePanelBroken"]);
   // Le versioni fino alla 1.6 scrivevano solo "window"/"sidepanel": chi aveva scelto la
   // finestra resta sulla finestra, tutti gli altri passano al nuovo default, il popup.
   const mode = UI_MODES.includes(stored.dlcUiMode) ? stored.dlcUiMode : "popup";
+  // Il pannello laterale è stato scelto ma il browser non lo mostra: il background lo ha
+  // segnato e apre la finestra. Meglio dirlo che lasciare l'icona muta.
+  const broken = stored.dlcSidePanelBroken === true;
+  if (broken) {
+    note.textContent =
+      "Questo browser espone l'API del pannello laterale ma non lo mostra (Arc non lo supporta): l'icona apre la finestra separata. Al prossimo avvio si riprova il pannello da solo.";
+    note.classList.remove("is-hidden");
+  }
+  reset.classList.toggle("is-hidden", mode === "popup");
+  reset.addEventListener("click", async () => {
+    await chrome.storage.local.set({ dlcUiMode: "popup" });
+    radios.forEach((radio) => (radio.checked = radio.value === "popup"));
+    reset.classList.add("is-hidden");
+    ctx.toast(UI_MODE_LABELS.popup);
+  });
   radios.forEach((radio) => {
     radio.checked = radio.value === mode;
     radio.addEventListener("change", async () => {
       if (!radio.checked) return;
       await chrome.storage.local.set({ dlcUiMode: radio.value });
+      reset.classList.toggle("is-hidden", radio.value === "popup");
       ctx.toast(UI_MODE_LABELS[radio.value] || "Apertura aggiornata");
     });
   });

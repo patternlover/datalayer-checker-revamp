@@ -404,7 +404,8 @@ button:disabled {
    Nel pannello stretto le due parti sono impilate e si trascina in verticale; in una finestra
    larga la lista sta a sinistra e si trascina in orizzontale. Il cursore a due frecce compare
    solo sul separatore, quindi non interferisce con la selezione del testo. */
-#events-split {
+#events-split,
+#hits-split {
     flex: 0 0 auto;
     position: relative;
     z-index: 2;
@@ -414,7 +415,10 @@ button:disabled {
 
 #events-split:hover,
 #events-split:focus-visible,
-#events-split.is-dragging {
+#events-split.is-dragging,
+#hits-split:hover,
+#hits-split:focus-visible,
+#hits-split.is-dragging {
     background: var(--teal-3);
     outline: none;
 }
@@ -425,7 +429,8 @@ body.is-splitting {
 }
 
 @media (max-width: 620px) {
-    #events-split {
+    #events-split,
+    #hits-split {
         width: 100%;
         height: 7px;
         cursor: row-resize;
@@ -433,7 +438,8 @@ body.is-splitting {
 }
 
 @media (min-width: 621px) {
-    #events-split {
+    #events-split,
+    #hits-split {
         width: 7px;
         align-self: stretch;
         cursor: col-resize;
@@ -526,7 +532,8 @@ body.is-splitting {
 }
 
 /* ---------- Eventi ---------- */
-#events-view {
+#events-view,
+#hits-view {
     flex-direction: row;
 }
 
@@ -953,10 +960,265 @@ body.is-splitting {
     color: var(--muted);
 }
 
-.app.no-events .events-sidebar,
+.app.no-events #events-view .events-sidebar,
 .app.no-events #events-split,
-.app.no-events .detail-head {
+.app.no-events #events-view .detail-head {
     display: none;
+}
+
+/* ---------- Hit dei vendor ----------
+   Una hit è una chiamata di rete (GA4, Meta, TikTok, …) decodificata: i parametri arrivano già
+   divisi per gruppi dal provider, qui si impagina soltanto. */
+.search-count {
+    position: absolute;
+    top: 50%;
+    right: 31px;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--faint);
+}
+
+.search-count.is-filtered {
+    color: var(--teal-2);
+    font-weight: 700;
+}
+
+.type-chips {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 108px;
+    overflow-y: auto;
+    padding: 6px 8px 7px;
+    border-bottom: 1px solid var(--line-2);
+}
+
+.type-chips:empty {
+    display: none;
+}
+
+.type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.type-chip:hover {
+    border-color: var(--teal-3);
+    color: var(--ink);
+}
+
+.type-chip.active {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: #fff;
+}
+
+.type-chip.reset {
+    border-style: dashed;
+    color: var(--faint);
+}
+
+.type-chip-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    opacity: 0.75;
+}
+
+.hit-row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+}
+
+.vendor-badge {
+    padding: 0 6px;
+    border-radius: var(--r-sm);
+    background: var(--tint);
+    color: var(--teal);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.vendor-badge[data-vendor="meta"] {
+    background: #e7ecff;
+    color: #22357d;
+}
+
+.vendor-badge[data-vendor="tiktok"] {
+    background: #f2eefb;
+    color: #4a2b7a;
+}
+
+.vendor-badge[data-vendor="gtm"] {
+    background: #e8f1fb;
+    color: #1c4f82;
+}
+
+.vendor-badge[data-vendor="ga4"],
+.vendor-badge[data-vendor="ua"] {
+    background: #fdf0e3;
+    color: #8a4a12;
+}
+
+.vendor-badge[data-vendor="hotjar"],
+.vendor-badge[data-vendor="clarity"] {
+    background: #fbe9ef;
+    color: #8a2342;
+}
+
+.hit-account {
+    max-width: 92px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-hits {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--teal-3);
+}
+
+.event-meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--faint);
+}
+
+.detail-hits {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line-2);
+}
+
+.detail-hits-label {
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--muted);
+}
+
+.hit-chip {
+    padding: 2px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--teal);
+}
+
+.hit-chip:hover {
+    border-color: var(--teal-3);
+}
+
+/* Nel pannello stretto i metadati non ci stanno accanto al nome: vanno a capo invece di
+   schiacciarlo a zero. */
+#hits-view .detail-title-wrap {
+    flex-wrap: wrap;
+    row-gap: 1px;
+}
+
+.hit-url {
+    margin: 10px 14px 2px;
+    padding: 7px 9px;
+    border-radius: var(--r-sm);
+    background: var(--paper);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-all;
+    user-select: text;
+}
+
+.hit-url:hover,
+.hit-url:focus-visible {
+    background: var(--tint);
+    color: var(--ink);
+    outline: none;
+}
+
+.hit-fields {
+    padding: 2px 0 18px;
+}
+
+.hit-group {
+    margin-top: 10px;
+}
+
+.hit-group-title {
+    margin: 0 0 2px;
+    padding: 0 14px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+
+.kv {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.kv tr + tr {
+    border-top: 1px solid var(--line-2);
+}
+
+.kv-key {
+    width: 45%;
+    padding: 4px 10px 4px 14px;
+    vertical-align: top;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.kv-key:hover,
+.kv-key:focus-visible {
+    color: var(--teal);
+    text-decoration: underline;
+    outline: none;
+}
+
+.kv-value {
+    padding: 4px 14px 4px 10px;
+    vertical-align: top;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink);
+    word-break: break-word;
+    white-space: pre-wrap;
+    cursor: pointer;
+    user-select: text;
+}
+
+.kv-value:hover,
+.kv-value:focus-visible {
+    background: var(--surface-2);
+    outline: none;
+}
+
+.kv-empty {
+    margin: 12px 14px;
+    color: var(--muted);
 }
 
 /* ---------- UAT ---------- */
@@ -1300,7 +1562,8 @@ html.is-popup .app {
 
 /* ---------- Layout stretto (popup, finestra o pannello laterale) ---------- */
 @media (max-width: 620px) {
-    #events-view {
+    #events-view,
+    #hits-view {
         flex-direction: column;
     }
 

@@ -1,5 +1,6 @@
 import { $, eventLabel, eventNameOf, formatTime, copyText, pathnameOf, el, sheetCell, renderJsonTree, dataPaths } from "./util.js";
 import { state, frameEvents } from "./store.js";
+import { initSplit } from "./split.js";
 
 let ctx;
 let els;
@@ -58,120 +59,12 @@ export function init(context) {
     copyBtn: $("#copy-push"),
     containers: $("#containers-strip"),
     view: $("#events-view"),
-    sidebar: $(".events-sidebar"),
+    sidebar: $("#events-view .events-sidebar"),
     split: $("#events-split"),
   };
   bind();
-  initSplitter();
+  initSplit({ view: els.view, sidebar: els.sidebar, handle: els.split, key: "dlcEventsSplit" });
   return { render, selectEvent };
-}
-
-// ---------- Separatore lista / dettaglio ----------
-// Le due parti si dividono lo spazio: impilate nel pannello stretto (si trascina in altezza),
-// affiancate in una finestra larga (si trascina in larghezza). La misura scelta si ricorda per
-// asse, così passando da una finestra all'altra ognuna ritrova la sua.
-const SPLIT_KEY = "dlcEventsSplit";
-const splitSizes = { stacked: null, aside: null };
-
-function splitAxis() {
-  return getComputedStyle(els.view).flexDirection === "column" ? "stacked" : "aside";
-}
-
-function clampSplit(size, axis) {
-  const rect = els.view.getBoundingClientRect();
-  if (axis === "stacked") {
-    // Al dettaglio restano almeno 180px: sotto, il JSON è inutilizzabile.
-    return Math.round(Math.max(120, Math.min(size, rect.height - 180)));
-  }
-  return Math.round(Math.max(170, Math.min(size, rect.width - 240)));
-}
-
-function applySplit() {
-  // Con la vista Eventi nascosta (scheda UAT o Impostazioni) le misure valgono 0: applicare
-  // adesso vorrebbe dire scrivere il minimo. Si riapplica quando la vista torna visibile.
-  const rect = els.view.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
-  const axis = splitAxis();
-  els.sidebar.style.flexBasis = "";
-  els.sidebar.style.width = "";
-  const size = splitSizes[axis];
-  if (!size) return;
-  els.sidebar.style.flexBasis = clampSplit(size, axis) + "px";
-  if (axis === "aside") els.sidebar.style.width = clampSplit(size, axis) + "px";
-}
-
-function saveSplit() {
-  chrome.storage.local.set({ [SPLIT_KEY]: splitSizes }).catch(() => {});
-}
-
-function setSplit(size, axis) {
-  splitSizes[axis] = clampSplit(size, axis);
-  applySplit();
-}
-
-function initSplitter() {
-  if (!els.split) return;
-  chrome.storage.local
-    .get(SPLIT_KEY)
-    .then((stored) => {
-      const saved = stored[SPLIT_KEY];
-      if (saved && typeof saved === "object") {
-        if (Number.isFinite(saved.stacked)) splitSizes.stacked = saved.stacked;
-        if (Number.isFinite(saved.aside)) splitSizes.aside = saved.aside;
-        applySplit();
-      }
-    })
-    .catch(() => {});
-
-  els.split.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    const axis = splitAxis();
-    const rect = els.view.getBoundingClientRect();
-    els.split.setPointerCapture(event.pointerId);
-    els.split.classList.add("is-dragging");
-    document.body.classList.add("is-splitting");
-    document.body.style.cursor = axis === "stacked" ? "row-resize" : "col-resize";
-
-    const move = (ev) => {
-      const raw = axis === "stacked" ? ev.clientY - rect.top : ev.clientX - rect.left;
-      setSplit(raw, axis);
-    };
-    const end = () => {
-      els.split.removeEventListener("pointermove", move);
-      els.split.removeEventListener("pointerup", end);
-      els.split.removeEventListener("pointercancel", end);
-      els.split.classList.remove("is-dragging");
-      document.body.classList.remove("is-splitting");
-      document.body.style.cursor = "";
-      saveSplit();
-    };
-    els.split.addEventListener("pointermove", move);
-    els.split.addEventListener("pointerup", end);
-    els.split.addEventListener("pointercancel", end);
-  });
-
-  // Tastiera: il separatore è raggiungibile con Tab e si muove a passi di 16px.
-  els.split.addEventListener("keydown", (event) => {
-    const axis = splitAxis();
-    const current = splitSizes[axis] || (axis === "stacked" ? els.sidebar.getBoundingClientRect().height : els.sidebar.getBoundingClientRect().width);
-    const step = event.shiftKey ? 48 : 16;
-    let next = null;
-    if (axis === "stacked" && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
-      next = current + (event.key === "ArrowDown" ? step : -step);
-    } else if (axis === "aside" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
-      next = current + (event.key === "ArrowRight" ? step : -step);
-    }
-    if (next == null) return;
-    event.preventDefault();
-    setSplit(next, axis);
-    saveSplit();
-  });
-
-  // La finestra cambia misura (o cambia asse): le misure salvate restano nei limiti.
-  // ResizeObserver copre anche il ritorno sulla vista Eventi, quando aveva misura 0.
-  window.addEventListener("resize", applySplit);
-  if (typeof ResizeObserver === "function") new ResizeObserver(() => applySplit()).observe(els.view);
 }
 
 function bind() {

@@ -24,6 +24,7 @@ Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
 2. Naviga: ogni push del `dataLayer` compare in tempo reale, con un separatore a ogni pagina.
 3. Senza un sito cliente: in `docs/demo/` c'è un finto negozio —
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
+4. Scheda **Hit**: le chiamate che partono (GA4, Meta, TikTok…) con i parametri decodificati.
 
 La tab in test **non segue il focus**: puoi passare a Sheets, a GTM o a un'altra tab senza
 perdere la cattura. **Passa a …** sposta il test, **✕** (due click) chiude la sessione e azzera
@@ -41,6 +42,12 @@ gli eventi raccolti.
   quel parametro sul quarto item, non solo chi contiene quella stringa.
 - **Top / Pixel** — il `dataLayer` dei Shopify Custom Pixel sta in un iframe e viene catturato in
   parallelo: il selettore (o `T` / `P`) cambia solo la vista, senza perdere dati.
+- **Hit dei vendor** — le chiamate di rete che partono dalla pagina, decodificate con i dizionari
+  dei parametri di Omnibug: GA4, Universal Analytics, GTM, Google Ads, Meta, TikTok, LinkedIn,
+  Pinterest, Snapchat, Reddit, Microsoft Ads, Criteo, Hotjar, Clarity. I parametri arrivano divisi
+  in gruppi (Generale, Eventi, E-commerce…): click sul nome per copiare il parametro grezzo, click
+  sul valore per copiare il valore, **cURL** per la richiesta intera col corpo POST. Le hit vicine a
+  un push mostrano `#n` e portano all'evento. Corpo POST compreso (TikTok manda JSON, non query string).
 - **DataLayer vecchi e UA** — funziona anche con i push di una volta: `dataLayer.push(arguments)`
   e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Message»,
   leggibili ma distinte dagli eventi di business).
@@ -60,16 +67,24 @@ gli eventi raccolti.
   cattura, in sola lettura; `storage`, `clipboardWrite`, `sidePanel` per il resto.
 - **Cosa esce dal browser** — eventi e sessioni restano in locale. Solo impostazioni, domini e
   snippet stanno in `chrome.storage.sync`, cioè nel tuo account Google: niente è condiviso.
-- **La scheda Hits** — la raccolta delle hit dei vendor (GA4, Meta, TikTok, …) è già attiva, la
-  vista arriva a breve.
+- **Se l'icona non apre più niente** — con *Apertura → Pannello laterale* su un browser che espone
+  l'API ma non mostra il pannello (Arc), l'estensione apre la finestra separata e lo dice in
+  *Impostazioni*. Da `chrome://extensions` → Dettagli → **Opzioni estensione** si rientra comunque
+  nella UI, per rimettere il popup: prima l'unica via era rimuovere e ricaricare l'estensione.
 
 ## Cosa non fa
 
 Non verifica una specifica (per quello c'è DataLayer Doctor: qui la specifica si spunta a mano
-nella scheda UAT) · non esporta file o HAR · non funziona su `http://`, tranne `localhost` · una
-sola tab in test alla volta.
+nella scheda UAT) · non esporta file o HAR · non decodifica i vendor fuori dalla lista (Adobe,
+Tealium, Segment: aggiungerne uno è una riga in `lib/providers/index.js`) · non funziona su `http://`,
+tranne `localhost` · una sola tab in test alla volta.
 
 ## Provenienza
 
 Derivata da **DataLayer Checker Plus** (Chrome Web Store): `lib/`, `ui/` e il container probe
 sono lavoro nostro, la storia parte dal tag `pre-revamp`.
+
+La decodifica delle hit riusa i dizionari dei parametri di
+[Omnibug](https://github.com/MisterPhilip/omnibug) (MIT, © 2017 Philip Lawrence): i file in
+`lib/providers/` sono copiati da là e trasformati in moduli ES, testo della licenza incluso. Il
+resto (cattura, correlazione con il dataLayer, interfaccia) è nostro.

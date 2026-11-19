@@ -18,10 +18,12 @@ import {
 } from "./store.js";
 import * as injector from "./injector.js";
 import * as events from "./events.js";
+import * as hits from "./hits.js";
 import * as collect from "./collect.js";
 import * as settings from "./settings.js";
 
 let eventsView;
+let hitsView;
 let collectView;
 let settingsView;
 let currentView = "events";
@@ -82,6 +84,7 @@ async function boot() {
 
   await events.restore();
   eventsView = events.init(ctx);
+  hitsView = hits.init(ctx);
   collectView = collect.init(ctx);
   settingsView = settings.init(ctx);
 
@@ -197,7 +200,8 @@ function hasPixel() {
 }
 
 function renderEnvSelect() {
-  const show = hasPixel() && currentView === "events";
+  // Il selettore vale per entrambe le schede che leggono i due dataLayer in parallelo.
+  const show = hasPixel() && (currentView === "events" || currentView === "hits");
   $("#env-select").classList.toggle("is-hidden", !show);
   if (!hasPixel() && state.frame === "pixel") setFrame("top");
   renderEnvCounts();
@@ -223,7 +227,7 @@ function wireChrome() {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = e.target && e.target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-    if (currentView !== "events" || !hasPixel()) return;
+    if ((currentView !== "events" && currentView !== "hits") || !hasPixel()) return;
     if (e.key === "t" || e.key === "T") setFrame("top");
     else if (e.key === "p" || e.key === "P") setFrame("pixel");
   });
@@ -264,6 +268,7 @@ function showView(name) {
   currentView = name;
   const views = {
     events: $("#events-view"),
+    hits: $("#hits-view"),
     uat: $("#uat-view"),
     settings: $("#settings-view"),
   };
@@ -296,6 +301,7 @@ function renderAll() {
   $(".app").classList.toggle("no-events", frameEvents().length === 0);
 
   if (currentView === "events" && eventsView) eventsView.render();
+  else if (currentView === "hits" && hitsView) hitsView.render();
   else if (currentView === "uat" && collectView) collectView.render();
   else if (currentView === "settings" && settingsView) settingsView.render();
 }
