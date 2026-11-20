@@ -195,3 +195,28 @@ tags found` anche con l'istanza in debug, perché la tab del checkout è stata a
 ricetta che funziona è quella dell'interfaccia: Preview da GTM, e poi carrello → checkout
 **nella stessa tab** che ha aperto Tag Assistant. Se il checkout si apre in una tab nuova, o fa
 un salto su un altro dominio, Tag Assistant si sgancia e scrive `Debug window closed`.
+
+## Come Tag Assistant riceve i dati, e perché serve la companion (misurato 2026-11-21)
+
+Letto nel bootstrap di debug (`https://www.googletagmanager.com/debug/bootstrap?id=…`, quello che
+`gtm.js` carica quando trova un segnale di debug): i dati non viaggiano per beacon.
+
+- in pagina `gtm.js` crea `window["google.tagmanager.debugui2.queue"]` e ci mette
+  `CONTAINER_STARTING` con una callback `resume`;
+- se esiste `window.__TAG_ASSISTANT_API` (lo mette l'estensione **Tag Assistant Companion**) i
+  messaggi passano da `sendMessage`;
+- altrimenti lo script **apre lui la pagina di Tag Assistant** con `window.open(
+  "https://tagassistant.google.com/?restart_tag_assistant", "tag-assistant-home-<id>")` e le parla
+  in `postMessage`; dall'altro lato Tag Assistant ritrova la tab per `window.name`
+  (`tag-assistant-debug-window-<id>`).
+
+Conseguenza misurata su questo browser (Chromium 158, profilo con l'estensione DataLayer Checker e
+senza la companion): `window.open` **senza gesto utente è bloccato** e `__TAG_ASSISTANT_API` è
+`undefined`. Quindi una tab arrivata al checkout per navigazione non può aprire la finestra di Tag
+Assistant né offrire l'API: il pannello non ha modo di leggere la coda, e questo — non il ponte — è
+il motivo per cui la preview resta vuota o scrive `Debug window closed`. Con la companion
+installata il ramo `sendMessage` sostituisce il popup e la tab viene letta comunque.
+
+Rete dello stesso checkout: 3 richieste verso `sgtm.giuseppezanotti.com`, quindi il sito manda già
+gli hit a un container server. La preview di quel container è la strada che non dipende né dalla
+sandbox né da Tag Assistant.
