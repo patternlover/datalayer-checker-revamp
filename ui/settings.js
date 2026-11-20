@@ -195,12 +195,16 @@ export function render() {
   const pixelIds = containers && Array.isArray(containers.pixel) ? containers.pixel : [];
   const injected = containers && Array.isArray(containers.injected) ? containers.injected : [];
   const twice = injected.filter((id) => pixelIds.includes(id));
-  if (mirror.on && twice.length) {
-    els.mirrorNote.classList.remove("is-hidden");
-    els.mirrorNote.textContent =
+  let note = "";
+  if (mirror.on && !injector.on) {
+    // Il caso più frequente: il ponte c'è, ma nel Top non gira nessun container, quindi Tag
+    // Assistant non ha a cosa agganciarsi e la preview resta vuota (o si sgancia navigando).
+    note =
+      "⚠ Il ponte non ha un container nel Top: senza GTM Injector acceso la preview non può mostrare niente. Metti lo snippet in questa card e accendila.";
+  } else if (mirror.on && twice.length) {
+    note =
       "⚠ " + twice.join(", ") + " gira già nel pixel: rispecchiare qui lo fa partire due volte (un purchase risulterebbe doppio).";
-  } else {
-    els.mirrorNote.classList.add("is-hidden");
-    els.mirrorNote.textContent = "";
   }
+  els.mirrorNote.classList.toggle("is-hidden", !note);
+  els.mirrorNote.textContent = note;
 }

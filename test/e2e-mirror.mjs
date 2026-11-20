@@ -221,6 +221,19 @@ async function main() {
     check("impostazioni: sezione del ponte presente", settingsUi.viewVisible && settingsUi.hasToggle, JSON.stringify(settingsUi));
     check("impostazioni: il toggle scrive in storage", settingsUi.after === true, String(settingsUi.after));
     check("impostazioni: scope di default solo-checkout", settingsUi.scope === "solo-checkout", settingsUi.scope);
+    const noteNoInjector = await evaluate(
+      ui.client,
+      `(async () => {
+         await chrome.storage.sync.set({ pixelmirror: true, gtmcodepush: false });
+         await new Promise((r) => setTimeout(r, 300));
+         document.getElementById("mirror-toggle").click();
+         await new Promise((r) => setTimeout(r, 300));
+         const note = document.getElementById("mirror-note");
+         const hidden = note.classList.contains("is-hidden");
+         return hidden ? "" : note.textContent;
+       })()`
+    );
+    check("impostazioni: senza Injector l'avviso lo dice", /Injector/.test(noteNoInjector), String(noteNoInjector).slice(0, 80));
 
     await evaluate(ui.client, `chrome.storage.sync.set({ pixelmirror: true, pixelmirrorScope: "solo-checkout" })`);
 

@@ -74,8 +74,9 @@ gli eventi raccolti.
   Pixel e il `dataLayer` della pagina non li vede: con questa opzione arrivano **identici** nel
   `dataLayer` del frame principale, dove Tag Assistant li mostra in preview. Di default vale solo
   per `/checkouts/` e `/orders/`; *Tutte le pagine* allarga. Per vederli in preview serve un
-  container nel Top (campo Injector). Se quel container gira **anche** nel pixel, i suoi tag
-  scattano una seconda volta: l'estensione lo dice, non lo impedisce.
+  container nel Top (campo Injector acceso): senza, la preview non ha a cosa agganciarsi e resta
+  vuota. Se quel container gira **anche** nel pixel, i suoi tag scattano una seconda volta:
+  l'estensione lo dice, non lo impedisce.
 - **Apertura** — default **popup** agganciato all'icona; da *Impostazioni → Apertura* si passa a
   finestra separata (debug lunghi) o pannello laterale (solo su Chrome).
 
