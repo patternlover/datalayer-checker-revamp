@@ -271,14 +271,14 @@ async function main() {
     // gtm.js si dichiara in debug solo con uno di quattro segnali (sorgente di gtm.js); sul
     // checkout l'unico che possiamo dargli è `data-tag-assistant-prod-present`. Snippet finto:
     // qui interessa che il codice arrivi in pagina e che l'attributo ci sia.
-    const CODE = "window.__injected = 1;";
+    const CODE = "window.__injected = 1; /* https://www.googletagmanager.com/gtm.js?id=GTM-KWB3XWX4 */";
     const setInjector = (ta) =>
       evaluate(
         ui.client,
         `(async () => {
-           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify("window.__injected = 1;")}, gtmDomains: ["127.0.0.1"] });
+           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify(CODE)}, gtmDomains: ["127.0.0.1"] });
            document.getElementById("gtm-domains").value = "127.0.0.1";
-           document.getElementById("gtm-code").value = "window.__injected = 1;";
+           document.getElementById("gtm-code").value = ${JSON.stringify(CODE)};
            const toggle = document.getElementById("injector-toggle");
            if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
            await new Promise((r) => setTimeout(r, 300));
@@ -324,6 +324,37 @@ async function main() {
       )
     );
     check("injector: senza l'opzione nessun segnale di debug", noTa.injected === true && noTa.ta === null, JSON.stringify(noTa));
+
+    // Solo l'ID nel campo: niente iniezione (sarebbe un ReferenceError silenzioso) e la card lo dice.
+    await checkout.client.send("Page.reload", { ignoreCache: true });
+    await sleep(2000);
+    const idOnly = await evaluate(
+      ui.client,
+      `(async () => {
+         await chrome.storage.sync.set({ gtmcode: "GTM-KWB3XWX4" });
+         await new Promise((r) => setTimeout(r, 300));
+         document.getElementById("gtm-domains").value = "127.0.0.1";
+         document.getElementById("gtm-code").value = "GTM-KWB3XWX4";
+         const toggle = document.getElementById("injector-toggle");
+         if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
+         await new Promise((r) => setTimeout(r, 250));
+         toggle.checked = true;
+         toggle.dispatchEvent(new Event("change"));
+         await new Promise((r) => setTimeout(r, 1200));
+         // Le impostazioni si ridisegnano solo quando la vista è aperta.
+         if (document.getElementById("settings-view").classList.contains("is-hidden")) {
+           document.getElementById("settings-toggle").click();
+           await new Promise((r) => setTimeout(r, 500));
+         }
+         const note = document.getElementById("injector-invalid");
+         return JSON.stringify({ hidden: note.classList.contains("is-hidden"), text: note.textContent });
+       })()`
+    );
+    const idOnlyState = JSON.parse(idOnly);
+    const notInjected = await evaluate(checkout.client, "String(window.__injected)");
+    check("injector: col solo ID non inietta niente", notInjected === "undefined", notInjected);
+    check("injector: col solo ID la card lo dice", !idOnlyState.hidden && /snippet/.test(idOnlyState.text), idOnlyState.text.slice(0, 60));
+    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
 
 
     // ---- 2. pagina prodotto: con scope solo-checkout non deve passare niente ----

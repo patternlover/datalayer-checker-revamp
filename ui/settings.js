@@ -13,6 +13,7 @@ export function init(context) {
     code: $("#gtm-code"),
     toggle: $("#injector-toggle"),
     ta: $("#injector-ta"),
+    invalid: $("#injector-invalid"),
     save: $("#save-settings"),
     conflict: $("#container-conflict"),
     mirrorToggle: $("#mirror-toggle"),
@@ -187,6 +188,15 @@ export function render() {
   } else {
     els.conflict.classList.add("is-hidden");
     els.conflict.textContent = "";
+  }
+
+  // Il container non è partito perché il campo non contiene uno snippet (tipico: solo l'ID).
+  if (els.invalid) {
+    const bad = !!(state.session && state.session.gtmInvalid);
+    els.invalid.classList.toggle("is-hidden", !bad);
+    els.invalid.textContent = bad
+      ? "⚠ Nel campo non c'è uno snippet GTM (manca googletagmanager.com/gtm.js): incolla il blocco completo, non solo l'ID. Il container non è stato caricato."
+      : "";
   }
 
   // Il ponte ha un costo che va detto prima di accenderlo in un sito vero: se lo stesso container

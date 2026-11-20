@@ -185,6 +185,8 @@ function onPageMessage(event) {
   try {
     if (data.__dlc === "gtmInjected") {
       port.postMessage(Flatted.stringify({ gtmMeta: true, gtmInjected: true }));
+    } else if (data.__dlc === "gtmInvalid") {
+      port.postMessage({ type: "gtmInvalid" });
     } else if (data.__dlc === "platform") {
       port.postMessage({ type: "platform", shopify: !!data.shopify });
     } else if ((data.__dlc === "containers" || data.__dlc === "gtmSkipped") && Array.isArray(data.ids)) {

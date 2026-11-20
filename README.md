@@ -60,7 +60,8 @@ gli eventi raccolti.
 - **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**: il pannello segna quali
   eventi sono già scattati (Top o Pixel, con l'ora) e **Copia UAT** dà il blocco da incollare.
   Vale per sito, sopravvive a refresh e riavvio, `*` è jolly.
-- **GTM Injector** — domini + snippet in *Impostazioni*, solo frame principale e solo `https`.
+- **GTM Injector** — domini + **snippet completo** in *Impostazioni* (il solo ID viene rifiutato: non è
+  un container), solo frame principale e solo `https`.
   Il chip nell'header dice se il container è in pagina; un banner ricorda che è attivo
   (**Disattiva** spegne, **×** chiude il banner). Se il container c'è già, l'iniezione si salta.
 - **Collega a Tag Assistant** (nella card dell'Injector, acceso di default) — `gtm.js` entra in

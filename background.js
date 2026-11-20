@@ -482,6 +482,8 @@ async function injectCollector(tabId) {
 async function syncInjectedContainers(onlyTabId) {
   const { gtmcode, gtmcodepush } = await chrome.storage.sync.get(["gtmcode", "gtmcodepush"]);
   const ids = gtmcodepush === true ? extractContainerIdsFromCode(gtmcode) : [];
+  // Codice nuovo = il vecchio esito ("non era uno snippet") non vale più.
+  if (onlyTabId != null) await store.setFlags(onlyTabId, { gtmInvalid: false });
   if (onlyTabId != null) {
     const session = await store.setInjectedContainers(onlyTabId, ids);
     if (session) broadcast(onlyTabId, { type: "session", session: session });
@@ -625,6 +627,12 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
 
   if (msg && typeof msg === "object" && msg.type === "containers") {
     const updated = await store.mergePageContainers(tabId, msg.ids || [], frame);
+    if (updated) broadcast(tabId, { type: "session", session: updated });
+    return;
+  }
+
+  if (msg && typeof msg === "object" && msg.type === "gtmInvalid") {
+    const updated = await store.setFlags(tabId, { gtmInvalid: true });
     if (updated) broadcast(tabId, { type: "session", session: updated });
     return;
   }

@@ -51,8 +51,21 @@
     } catch (error) {}
   }
 
+  // Il campo "Snippet del container" accetta spesso il solo ID (GTM-XXXX): incollato come script
+  // è un'espressione che va in ReferenceError, senza dire niente. Qui si riconosce e si ferma.
+  function looksLikeSnippet(code) {
+    return /googletagmanager\.com\/gtm\.js/.test(code);
+  }
+
   function injectOnce(code, position) {
     if (typeof code !== "string" || code === "") return;
+    if (!looksLikeSnippet(code)) {
+      console.error(
+        "[DataLayer Checker] GTM Injector: nel campo non c'è uno snippet GTM (manca googletagmanager.com/gtm.js). Incolla il blocco completo, non solo l'ID."
+      );
+      send({ __dlc: "gtmInvalid" });
+      return;
+    }
     if (window.__dlcGtmInjectedCode === code) return;
     var ids = code.match(/GTM-[A-Z0-9]+/g) || [];
     var dup = containersOnPage(ids);
@@ -64,6 +77,7 @@
     }
     window.__dlcGtmInjectedCode = code;
     injectCode(code, position === "body" ? "body" : "head");
+    console.info("[DataLayer Checker] GTM Injector: container iniettato (" + ids.join(", ") + ")");
     send({ __dlc: "gtmInjected" });
   }
 

@@ -353,6 +353,7 @@ export function gtmCodeWarning(raw) {
   const source = String(raw || "");
   if (!source.trim()) return null;
   if (!/GTM-[A-Z0-9]+/.test(source)) return "Nessun ID GTM-… nel codice: sembra incollato male";
+  if (!/googletagmanager\.com\/gtm\.js/.test(source)) return "Manca il loader di gtm.js: incolla lo snippet completo, non solo l'ID";
   const leftover = source
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
