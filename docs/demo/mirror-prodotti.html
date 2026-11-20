@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finta pagina prodotto con Custom Pixel — DataLayer Checker</title>
+    <style>
+      body { font: 15px/1.5 system-ui; margin: 0; padding: 26px; background: #f4f6f5; color: #0e2c2b; }
+      h1 { font-size: 19px; margin: 0 0 2px; }
+      .sub { color: #5f7674; margin: 0 0 16px; font-size: 13px; max-width: 620px; }
+      iframe { width: 100%; max-width: 520px; height: 130px; border: 1px solid #dce4e2; border-radius: 10px; background: #fff; }
+      code { font-family: ui-monospace, monospace; font-size: 12px; background: #e8eeee; padding: 1px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Finta pagina prodotto</h1>
+    <p class="sub">
+      Stesso sandbox, path <code>/sandbox/modern/products/demo/pixel.html</code>: con lo scope
+      <strong>Solo checkout e ordini</strong> il ponte non deve rispecchiare niente qui, e la tab Top
+      deve restare vuota.
+    </p>
+    <iframe sandbox="allow-scripts" src="/sandbox/modern/products/demo/pixel.html" title="Finto sandbox del pixel"></iframe>
+  </body>
+</html>

@@ -24,7 +24,13 @@ Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
 2. Naviga: ogni push del `dataLayer` compare in tempo reale, con un separatore a ogni pagina.
 3. Senza un sito cliente: in `docs/demo/` c'è un finto negozio —
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
+   Il finto checkout per il ponte è `http://localhost:8080/mirror.html` (iframe sandboxato su
+   `/sandbox/modern/checkouts/…`), la pagina fuori scope è `mirror-prodotti.html`.
 4. Scheda **Hit**: le chiamate che partono (GA4, Meta, TikTok…) con i parametri decodificati.
+
+Per verificare il ponte senza toccare Chrome: `node test/e2e-mirror.mjs` (carica l'estensione in un
+profilo temporaneo, mette in test le due pagine demo e controlla cosa arriva nel `dataLayer` del
+Top). Su Google Chrome serve `--enable-unsafe-extension-debugging`: lo script lo passa da solo.
 
 La tab in test **non segue il focus**: puoi passare a Sheets, a GTM o a un'altra tab senza
 perdere la cattura. **Passa a …** sposta il test, **✕** (due click) chiude la sessione e azzera
@@ -57,6 +63,13 @@ gli eventi raccolti.
 - **GTM Injector** — domini + snippet in *Impostazioni*, solo frame principale e solo `https`.
   Il chip nell'header dice se il container è in pagina; un banner ricorda che è attivo
   (**Disattiva** spegne, **×** chiude il banner). Se il container c'è già, l'iniezione si salta.
+- **Rispecchia pixel sul Top** — *Impostazioni*, spento di default. Gli eventi del checkout
+  (`checkout_started`, `add_payment_info`, `checkout_completed`…) nascono nel sandbox del Custom
+  Pixel e il `dataLayer` della pagina non li vede: con questa opzione arrivano **identici** nel
+  `dataLayer` del frame principale, dove Tag Assistant li mostra in preview. Di default vale solo
+  per `/checkouts/` e `/orders/`; *Tutte le pagine* allarga. Per vederli in preview serve un
+  container nel Top (campo Injector). Se quel container gira **anche** nel pixel, i suoi tag
+  scattano una seconda volta: l'estensione lo dice, non lo impedisce.
 - **Apertura** — default **popup** agganciato all'icona; da *Impostazioni → Apertura* si passa a
   finestra separata (debug lunghi) o pannello laterale (solo su Chrome).
 
@@ -77,7 +90,9 @@ gli eventi raccolti.
 Non verifica una specifica (per quello c'è DataLayer Doctor: qui la specifica si spunta a mano
 nella scheda UAT) · non esporta file o HAR · non decodifica i vendor fuori dalla lista (Adobe,
 Tealium, Segment: aggiungerne uno è una riga in `lib/providers/index.js`) · non funziona su `http://`,
-tranne `localhost` · una sola tab in test alla volta.
+tranne `localhost` · una sola tab in test alla volta · il ponte non copre gli app pixel (sandbox
+strict: girano in un worker e lì non c'è un `window.dataLayer` da agganciare) e non rende visibile
+in preview l'istanza del container che gira dentro il pixel, solo i suoi eventi.
 
 ## Provenienza
 

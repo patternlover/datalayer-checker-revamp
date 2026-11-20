@@ -189,6 +189,8 @@ function onPageMessage(event) {
       port.postMessage({ type: "platform", shopify: !!data.shopify });
     } else if ((data.__dlc === "containers" || data.__dlc === "gtmSkipped") && Array.isArray(data.ids)) {
       port.postMessage({ type: "containers", ids: data.ids });
+    } else if (data.__dlc === "pixelMirror" && Array.isArray(data.events)) {
+      port.postMessage({ type: "pixelMirror", mode: data.mode === "seed" ? "seed" : "push", events: data.events });
     } else if (data.event === "dataLayerData" && Array.isArray(data.dlData)) {
       data.meta = {
         url: location.href,

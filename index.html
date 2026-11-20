@@ -159,6 +159,27 @@
             <label class="field-label" for="gtm-code">Snippet del container</label>
             <textarea id="gtm-code" class="text-input code-input" rows="6" spellcheck="false" placeholder="<!-- Google Tag Manager --> …"></textarea>
           </section>
+
+          <section class="setting" id="mirror-card">
+            <div class="setting-head">
+              <h3>Rispecchia pixel sul Top</h3>
+              <label class="switch" title="Ripusha nel dataLayer della pagina gli eventi del Custom Pixel">
+                <input type="checkbox" id="mirror-toggle" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <p class="setting-desc">
+              Gli eventi del checkout nascono nel sandbox del Custom Pixel: il dataLayer della pagina non li vede mai,
+              quindi in preview non compaiono. Con questa opzione arrivano nel dataLayer del Top con lo stesso nome e lo
+              stesso payload, e Tag Assistant li mostra. Per vederli serve un container nel Top: quello del campo qui sopra.
+            </p>
+            <p id="mirror-note" class="conflict-note is-hidden"></p>
+            <label class="field-label" for="mirror-scope">Eventi da rispecchiare</label>
+            <select id="mirror-scope" class="text-input">
+              <option value="solo-checkout">Solo checkout e ordini</option>
+              <option value="sempre">Tutte le pagine</option>
+            </select>
+          </section>
         </div>
         <footer class="view-foot">
           <span id="app-version" class="app-version" title="Versione caricata in questo browser"></span>

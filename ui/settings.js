@@ -14,12 +14,49 @@ export function init(context) {
     toggle: $("#injector-toggle"),
     save: $("#save-settings"),
     conflict: $("#container-conflict"),
+    mirrorToggle: $("#mirror-toggle"),
+    mirrorScope: $("#mirror-scope"),
+    mirrorNote: $("#mirror-note"),
   };
   bind();
+  bindMirror();
   fillFields();
+  loadMirror();
   initUiMode();
   showVersion();
   return { render };
+}
+
+// ---------- Rispecchia pixel sul Top ----------
+// Gli eventi del checkout vivono solo nel sandbox del Custom Pixel: il container del tema non li
+// riceve. Il background li ripusha identici nel dataLayer del Top, dove Tag Assistant li legge.
+const MIRROR_KEY = "pixelmirror";
+const MIRROR_SCOPE_KEY = "pixelmirrorScope";
+const MIRROR_SCOPES = ["solo-checkout", "sempre"];
+
+const mirror = { on: false, scope: "solo-checkout" };
+
+async function loadMirror() {
+  const stored = await chrome.storage.sync.get([MIRROR_KEY, MIRROR_SCOPE_KEY]);
+  mirror.on = stored[MIRROR_KEY] === true;
+  mirror.scope = MIRROR_SCOPES.includes(stored[MIRROR_SCOPE_KEY]) ? stored[MIRROR_SCOPE_KEY] : "solo-checkout";
+  els.mirrorToggle.checked = mirror.on;
+  els.mirrorScope.value = mirror.scope;
+  render();
+}
+
+function bindMirror() {
+  els.mirrorToggle.addEventListener("change", async () => {
+    mirror.on = els.mirrorToggle.checked;
+    await chrome.storage.sync.set({ [MIRROR_KEY]: mirror.on });
+    render();
+    ctx.toast(mirror.on ? "Ponte acceso: eventi del pixel nel Top" : "Ponte spento");
+  });
+  els.mirrorScope.addEventListener("change", async () => {
+    mirror.scope = MIRROR_SCOPES.includes(els.mirrorScope.value) ? els.mirrorScope.value : "solo-checkout";
+    await chrome.storage.sync.set({ [MIRROR_SCOPE_KEY]: mirror.scope });
+    ctx.toast(mirror.scope === "sempre" ? "Rispecchio su tutte le pagine" : "Rispecchio solo checkout e ordini");
+  });
 }
 
 // La versione serve a loro, non a noi: quando una segnalazione arriva, la prima domanda è
@@ -132,5 +169,20 @@ export function render() {
   } else {
     els.conflict.classList.add("is-hidden");
     els.conflict.textContent = "";
+  }
+
+  // Il ponte ha un costo che va detto prima di accenderlo in un sito vero: se lo stesso container
+  // gira anche nel sandbox del pixel, i suoi tag partono una seconda volta sugli eventi
+  // rispecchiati, e un purchase finisce doppio.
+  const pixelIds = containers && Array.isArray(containers.pixel) ? containers.pixel : [];
+  const injected = containers && Array.isArray(containers.injected) ? containers.injected : [];
+  const twice = injected.filter((id) => pixelIds.includes(id));
+  if (mirror.on && twice.length) {
+    els.mirrorNote.classList.remove("is-hidden");
+    els.mirrorNote.textContent =
+      "⚠ " + twice.join(", ") + " gira già nel pixel: rispecchiare qui lo fa partire due volte (un purchase risulterebbe doppio).";
+  } else {
+    els.mirrorNote.classList.add("is-hidden");
+    els.mirrorNote.textContent = "";
   }
 }

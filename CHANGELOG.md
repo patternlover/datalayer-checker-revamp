@@ -4,6 +4,15 @@ Ogni versione corrisponde alla `version` in `manifest.json`, a un tag git (`v1.9
 
 Le voci qui sotto stanno su una riga per frase: è il testo che finisce nelle release di GitHub, che va a capo da solo in base alla larghezza. Non spezzare le righe a mano.
 
+## 1.11.0 — 2026-11-20
+
+- **Rispecchia pixel sul Top** (*Impostazioni*, spento di default): gli eventi che il Custom Pixel spinge nel sandbox arrivano identici nel `dataLayer` del frame principale, dove GTM Preview li mostra. È l'unico modo per vedere `checkout_started`, `add_payment_info` e `checkout_completed`: il container del tema non li riceve e Tag Assistant non si aggancia al sandbox.
+- Lo scope di default è **solo checkout e ordini** (`/checkouts/`, `/orders/`), letto dal path del frame sandbox e non dal Top: con il checkout a pagina unica la rotta del Top non cambia fra i passi. *Tutte le pagine* è l'altra scelta.
+- Gli eventi `gtm.*` del container che gira nel sandbox si scartano, e `gtm.uniqueEventId`/`gtm.start` si tolgono prima del push: con l'id interno del sandbox il container del Top scarterebbe l'evento come già visto.
+- Se il container iniettato nel Top gira anche nel pixel, *Impostazioni* lo dice: rispecchiare lo fa partire due volte, e un `purchase` risulterebbe doppio. L'avviso non blocca.
+- `session.containers.pixel` separa i container visti nel frame pixel da quelli della pagina.
+- Pagine demo nuove in `docs/demo/` (`mirror.html`, `mirror-prodotti.html`) e `node test/e2e-mirror.mjs`: carica l'estensione in un profilo temporaneo, mette in test le due pagine e controlla cosa arriva nel `dataLayer` del Top. Google Chrome ignora `--load-extension`: lo script usa il dominio CDP `Extensions` con `--enable-unsafe-extension-debugging`.
+
 ## 1.10.0 — 2026-11-19
 
 - **Scheda Hit**: le chiamate di rete della pagina, decodificate. Non più nascoste dietro la correlazione: si vedono tutte, con `#n` su quelle vicine a un push del dataLayer.

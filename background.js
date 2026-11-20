@@ -287,6 +287,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.gtmcode) {
     syncInjectedContainers();
   }
+  // Il ponte si aggancia alle tab gia' aperte: senza questo il toggle avrebbe effetto solo al
+  // prossimo caricamento della pagina.
+  if (changes[MIRROR_KEY] || changes[MIRROR_SCOPE_KEY]) {
+    chrome.tabs.query({}).then((tabs) => {
+      for (const tab of tabs) {
+        if (tab.id) serial(tab.id, () => injectCollector(tab.id));
+      }
+    });
+  }
 });
 
 // ---------- Helpers ----------
@@ -302,6 +311,41 @@ function isSandboxUrl(url) {
 
 function isSandboxFrame(frame) {
   return !!frame && frame.frameType !== "outermost_frame" && frame.parentFrameId !== -1 && isSandboxUrl(frame.url);
+}
+
+// ---------- Rispecchia pixel sul Top ----------
+// Gli eventi del checkout nascono nel sandbox del Custom Pixel e il dataLayer della pagina non
+// li vede mai: il container del tema non li riceve e non li ricevera. Con `pixelmirror` acceso i
+// push del frame pixel vengono ripushati IDENTICI nel dataLayer del frame principale, dove
+// Tag Assistant li legge (con un container presente nel Top, che e' quello che l'Injector mette).
+const MIRROR_KEY = "pixelmirror";
+const MIRROR_SCOPE_KEY = "pixelmirrorScope";
+const MIRROR_SCOPES = ["solo-checkout", "sempre"];
+
+async function mirrorSettings() {
+  const stored = await chrome.storage.sync.get([MIRROR_KEY, MIRROR_SCOPE_KEY]);
+  return {
+    on: stored[MIRROR_KEY] === true,
+    scope: MIRROR_SCOPES.includes(stored[MIRROR_SCOPE_KEY]) ? stored[MIRROR_SCOPE_KEY] : "solo-checkout",
+  };
+}
+
+// Il path della pagina vera sta DENTRO l'URL del sandbox, che la traccia:
+//   /web-pixels@<hash>/custom/web-pixel-123@4/sandbox/modern/checkouts/cn/<token>/en-us
+// Qui si legge da li' e non dal Top: con il checkout a pagina unica la rotta del Top non cambia
+// fra i passi, e le pagine prerenderizzate hanno un frameId che non e' 0.
+function sandboxPagePath(url) {
+  const marker = "/sandbox/modern";
+  const at = typeof url === "string" ? url.indexOf(marker) : -1;
+  if (at === -1) return "";
+  const rest = url.slice(at + marker.length);
+  const cut = rest.search(/[?#]/);
+  return cut === -1 ? rest : rest.slice(0, cut);
+}
+
+function mirrorInScope(url, scope) {
+  if (scope === "sempre") return true;
+  return /^\/(checkouts|orders)\//.test(sandboxPagePath(url));
 }
 
 // Segnala alla UI che la tab ha un Shopify Custom Pixel (mostra il selettore Top/Pixel).
@@ -342,6 +386,67 @@ function serial(tabId, fn) {
   return next;
 }
 
+// Nel frame del sandbox: aggancia dataLayer.push e manda ogni push al background.
+function injectMirror(tabId, frameId) {
+  chrome.scripting
+    .executeScript({
+      target: { tabId: tabId, frameIds: [frameId] },
+      files: ["scripts/mirror.js"],
+      world: "MAIN",
+      injectImmediately: true,
+    })
+    .catch(() => {});
+}
+
+// Il Top non e' sempre frameId 0: si cerca il frame senza padre.
+async function topFrameId(tabId) {
+  try {
+    const frames = await chrome.webNavigation.getAllFrames({ tabId: tabId });
+    const tops = (frames || []).filter((f) => f.parentFrameId === -1).map((f) => f.frameId);
+    if (tops.length) return tops[0];
+  } catch (error) {}
+  return 0;
+}
+
+// Eseguita in world MAIN nel frame principale. L'evento arriva identico tranne le chiavi che GTM
+// usa per il proprio ciclo di vita: `gtm.uniqueEventId` collide con quello del Top e il container
+// scarterebbe l'evento come gia' visto.
+function pushMirrored(events) {
+  var dl = (window.dataLayer = window.dataLayer || []);
+  for (var i = 0; i < events.length; i++) {
+    var ev = events[i];
+    if (!ev || typeof ev !== "object") continue;
+    var copy = {};
+    for (var key in ev) {
+      if (!Object.prototype.hasOwnProperty.call(ev, key)) continue;
+      if (key === "gtm.uniqueEventId" || key === "gtm.start") continue;
+      copy[key] = ev[key];
+    }
+    dl.push(copy);
+  }
+}
+
+// mode "seed" = il backlog gia' presente nel dataLayer del sandbox, "push" = un evento nuovo.
+async function mirrorToTop(tabId, frameUrl, events) {
+  const settings = await mirrorSettings();
+  if (!settings.on) return;
+  if (!mirrorInScope(frameUrl, settings.scope)) return;
+  const list = Array.isArray(events) ? events.filter((ev) => ev && typeof ev === "object") : [];
+  if (!list.length) return;
+  const frameIds = [await topFrameId(tabId)];
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId, frameIds: frameIds },
+      world: "MAIN",
+      func: pushMirrored,
+      args: [list],
+    });
+  } catch (error) {
+    console.warn("dlc: rispecchia sul top", error);
+  }
+}
+
+// Carica il collector su Top e sandbox, e il ponte dove serve.
 function injectInto(tabId, frameId) {
   chrome.scripting
     .executeScript({ target: { tabId: tabId, frameIds: [frameId] }, files: ["scripts/content.js"] })
@@ -361,10 +466,14 @@ async function injectCollector(tabId) {
     return;
   }
   if (!frames) return;
+  const mirror = await mirrorSettings();
   let pixel = false;
   for (const f of frames) {
     if (!isActiveDoc(f)) continue;
-    if (isSandboxFrame(f)) pixel = true;
+    if (isSandboxFrame(f)) {
+      pixel = true;
+      if (mirror.on) injectMirror(tabId, f.frameId);
+    }
     if (isTopDetails(f) || isSandboxFrame(f)) injectInto(tabId, f.frameId);
   }
   if (pixel) await markPixel(tabId);
@@ -515,8 +624,13 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
   }
 
   if (msg && typeof msg === "object" && msg.type === "containers") {
-    const updated = await store.mergePageContainers(tabId, msg.ids || []);
+    const updated = await store.mergePageContainers(tabId, msg.ids || [], frame);
     if (updated) broadcast(tabId, { type: "session", session: updated });
+    return;
+  }
+
+  if (msg && typeof msg === "object" && msg.type === "pixelMirror") {
+    await mirrorToTop(tabId, frameUrl, msg.events || []);
     return;
   }
 
@@ -724,10 +838,12 @@ function maybeInject(details) {
   if (!isActiveDoc(details)) return;
   const top = isTopDetails(details);
   if (!top && !isSandboxUrl(details.url)) return;
-  store.get(details.tabId).then((session) => {
+  Promise.all([store.get(details.tabId), mirrorSettings()]).then(([session, mirror]) => {
     if (!session || !session.active) return;
     injectInto(details.tabId, details.frameId);
-    if (!top) markPixel(details.tabId);
+    if (top) return;
+    markPixel(details.tabId);
+    if (mirror.on) injectMirror(details.tabId, details.frameId);
   });
 }
 

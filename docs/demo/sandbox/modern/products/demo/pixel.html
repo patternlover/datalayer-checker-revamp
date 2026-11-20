@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finto Custom Pixel — prodotti</title>
+    <style>
+      body { font: 13px/1.5 system-ui; margin: 0; padding: 12px; color: #5f7674; }
+    </style>
+  </head>
+  <body>
+    <p>Finto Custom Pixel (prodotti): fuori dallo scope <code>solo-checkout</code>, quindi il ponte non deve rispecchiare niente.</p>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "product_viewed", "gtm.uniqueEventId": 1, product: { id: "MAG-001" } });
+      setInterval(function () {
+        window.dataLayer.push({ event: "product_viewed", product: { id: "MAG-001" } });
+      }, 1200);
+    </script>
+  </body>
+</html>

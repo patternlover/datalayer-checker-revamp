@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finto checkout con Custom Pixel — DataLayer Checker</title>
+    <style>
+      body { font: 15px/1.5 system-ui; margin: 0; padding: 26px; background: #f4f6f5; color: #0e2c2b; }
+      h1 { font-size: 19px; margin: 0 0 2px; }
+      .sub { color: #5f7674; margin: 0 0 16px; font-size: 13px; max-width: 620px; }
+      iframe { width: 100%; max-width: 520px; height: 130px; border: 1px solid #dce4e2; border-radius: 10px; background: #fff; }
+      .hint { margin-top: 16px; font-size: 13px; color: #5f7674; max-width: 620px; }
+      code { font-family: ui-monospace, monospace; font-size: 12px; background: #e8eeee; padding: 1px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Finto checkout</h1>
+    <p class="sub">
+      L'iframe qui sotto è <code>sandbox="allow-scripts"</code> e viene servito da
+      <code>/sandbox/modern/checkouts/demo/pixel.html</code>: stesso percorso e stessa origine opaca
+      di un Custom Pixel di Shopify. Gli eventi che pusha dentro non arrivano al dataLayer di questa
+      pagina, esattamente come sul checkout vero.
+    </p>
+    <iframe sandbox="allow-scripts" src="/sandbox/modern/checkouts/demo/pixel.html" title="Finto sandbox del pixel"></iframe>
+    <p class="hint">
+      Con <strong>Rispecchia pixel sul Top</strong> acceso (Impostazioni) e questa tab in test, gli
+      eventi del pixel compaiono anche nel dataLayer di questa pagina: selettore <strong>Top</strong>
+      invece di <strong>Pixel</strong>. Per confronto, senza il ponte la tab Top resta vuota.
+    </p>
+  </body>
+</html>

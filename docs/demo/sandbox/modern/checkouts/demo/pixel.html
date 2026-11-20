@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finto Custom Pixel — checkout</title>
+    <style>
+      body { font: 13px/1.5 system-ui; margin: 0; padding: 12px; color: #5f7674; }
+    </style>
+  </head>
+  <body>
+    <p>Finto Custom Pixel (checkout): pusha eventi ogni 1,2 secondi, più un <code>gtm.js</code> che non deve essere rispecchiato.</p>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      // Ciclo di vita di un container che gira nel sandbox: il ponte deve scartarlo.
+      window.dataLayer.push({ event: "gtm.js", "gtm.start": Date.now(), "gtm.uniqueEventId": 1 });
+      window.dataLayer.push({
+        event: "checkout_started",
+        "gtm.uniqueEventId": 2,
+        checkout: { currencyCode: "EUR", totalPrice: { amount: 89 } },
+      });
+      var n = 3;
+      setInterval(function () {
+        window.dataLayer.push({
+          event: "begin_checkout",
+          "gtm.uniqueEventId": n++,
+          ecommerce: { currency: "EUR", value: 89, items: [{ item_id: "MAG-001", quantity: 1 }] },
+        });
+      }, 1200);
+    </script>
+  </body>
+</html>
