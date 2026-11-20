@@ -271,14 +271,15 @@ async function main() {
     // gtm.js si dichiara in debug solo con uno di quattro segnali (sorgente di gtm.js); sul
     // checkout l'unico che possiamo dargli è `data-tag-assistant-prod-present`. Snippet finto:
     // qui interessa che il codice arrivi in pagina e che l'attributo ci sia.
-    const CODE = "window.__injected = 1; /* https://www.googletagmanager.com/gtm.js?id=GTM-KWB3XWX4 */";
-    const setInjector = (ta) =>
-      evaluate(
+    const CODE = "window.__injected = 1; /* googletagmanager.com/gtm.js?id=GTM-KWB3XWX4 */";
+    const setInjector = (ta, code) => {
+      const snippet = code || CODE;
+      return evaluate(
         ui.client,
         `(async () => {
-           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify(CODE)}, gtmDomains: ["127.0.0.1"] });
+           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify(snippet)}, gtmDomains: ["127.0.0.1"] });
            document.getElementById("gtm-domains").value = "127.0.0.1";
-           document.getElementById("gtm-code").value = ${JSON.stringify(CODE)};
+           document.getElementById("gtm-code").value = ${JSON.stringify(snippet)};
            const toggle = document.getElementById("injector-toggle");
            if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
            await new Promise((r) => setTimeout(r, 300));
@@ -288,6 +289,7 @@ async function main() {
            return JSON.stringify({ on: toggle.checked, reason: (await chrome.storage.sync.get(["gtmcodepush"])).gtmcodepush });
          })()`
       );
+    };
 
     // La UI legge la tab in test all'avvio: dopo il pin va ricaricata, altrimenti injectIntoActiveTab
     // lavora con tabId nullo (è quello che succede a chi apre il popup dopo aver pinnato).
@@ -325,35 +327,61 @@ async function main() {
     );
     check("injector: senza l'opzione nessun segnale di debug", noTa.injected === true && noTa.ta === null, JSON.stringify(noTa));
 
-    // Solo l'ID nel campo: niente iniezione (sarebbe un ReferenceError silenzioso) e la card lo dice.
+    // Le due forme che in pagina reale arrivavano vuote: <script async src="…gtm.js?id=…"> e il solo
+    // ID del container. Con i tag spogliati il loader spariva e non si iniettava niente.
     await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2000);
-    const idOnly = await evaluate(
-      ui.client,
-      `(async () => {
-         await chrome.storage.sync.set({ gtmcode: "GTM-KWB3XWX4" });
-         await new Promise((r) => setTimeout(r, 300));
-         document.getElementById("gtm-domains").value = "127.0.0.1";
-         document.getElementById("gtm-code").value = "GTM-KWB3XWX4";
-         const toggle = document.getElementById("injector-toggle");
-         if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
-         await new Promise((r) => setTimeout(r, 250));
-         toggle.checked = true;
-         toggle.dispatchEvent(new Event("change"));
-         await new Promise((r) => setTimeout(r, 1200));
-         // Le impostazioni si ridisegnano solo quando la vista è aperta.
-         if (document.getElementById("settings-view").classList.contains("is-hidden")) {
-           document.getElementById("settings-toggle").click();
-           await new Promise((r) => setTimeout(r, 500));
-         }
-         const note = document.getElementById("injector-invalid");
-         return JSON.stringify({ hidden: note.classList.contains("is-hidden"), text: note.textContent });
-       })()`
+    await sleep(2500);
+    await setInjector(true, '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-TEST123"></script>');
+    const srcDiag = JSON.parse(
+      await evaluate(
+        checkout.client,
+        `JSON.stringify({
+           loader: !!document.querySelector('script[src*="gtm.js?id=GTM-TEST123"]'),
+           injectedCode: typeof window.__dlcGtmInjectedCode === "string" ? window.__dlcGtmInjectedCode.slice(0, 60) : null,
+         })`
+      )
     );
-    const idOnlyState = JSON.parse(idOnly);
-    const notInjected = await evaluate(checkout.client, "String(window.__injected)");
-    check("injector: col solo ID non inietta niente", notInjected === "undefined", notInjected);
-    check("injector: col solo ID la card lo dice", !idOnlyState.hidden && /snippet/.test(idOnlyState.text), idOnlyState.text.slice(0, 60));
+    check("injector: snippet con <script src> non perde il loader", srcDiag.loader === true, JSON.stringify(srcDiag));
+
+    await checkout.client.send("Page.reload", { ignoreCache: true });
+    await sleep(2500);
+    await setInjector(true, "GTM-TEST456");
+    const idSnippet = JSON.parse(
+      await evaluate(
+        checkout.client,
+        `JSON.stringify({
+           loader: !!document.querySelector('script[src*="gtm.js?id=GTM-TEST456"]'),
+           gtmStart: (window.dataLayer || []).some((e) => e && e.event === "gtm.js"),
+         })`
+      )
+    );
+    check("injector: basta l'ID del container", idSnippet.loader === true && idSnippet.gtmStart === true, JSON.stringify(idSnippet));
+
+    // Un valore che non è né uno snippet né un ID non deve finire in pagina come script, e la card
+    // deve dire il perché (era il caso che l'altra sessione aveva intercettato: ReferenceError muto).
+    await checkout.client.send("Page.reload", { ignoreCache: true });
+    await sleep(2500);
+    await setInjector(true, "questo non e uno snippet");
+    const invalidCard = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           if (document.getElementById("settings-view").classList.contains("is-hidden")) {
+             document.getElementById("settings-toggle").click();
+             await new Promise((r) => setTimeout(r, 400));
+           }
+           await new Promise((r) => setTimeout(r, 700));
+           const note = document.getElementById("injector-invalid");
+           return JSON.stringify({ hidden: note.classList.contains("is-hidden"), text: note.textContent });
+         })()`
+      )
+    );
+    const notInjected = await evaluate(checkout.client, "typeof window.__dlcGtmInjectedCode");
+    check(
+      "injector: un valore non-snippet non inietta e la card lo dice",
+      notInjected === "undefined" && !invalidCard.hidden && /snippet|ID/i.test(invalidCard.text),
+      JSON.stringify({ notInjected, invalidCard })
+    );
     await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
 
 

@@ -10,15 +10,14 @@
     });
   }
 
-  // Lo snippet si incolla dal sito GTM: arriva con \r\n su Windows e con i commenti HTML
-  // attorno. Se si copia anche il secondo blocco, c'e' il <noscript> con un iframe: dentro
-  // uno script quella roba e' un errore di sintassi che uccide il container, quindi si toglie.
+  // Lo snippet si incolla dal sito GTM e arriva con i commenti HTML attorno; se si copia anche il
+  // secondo blocco c'e' il <noscript> con un iframe, che va tolto. I tag <script> invece restano:
+  // un loader scritto come <script async src="...gtm.js?id=..."> perde l'URL se si spogliano i
+  // tag, e in pagina non arriva niente (gtmcode.js sa leggere tutte e tre le forme).
   function cleanGtmCode(gtmcode) {
     return gtmcode
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
       .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/<script[^>]*>/gi, "")
-      .replace(/<\/script>/gi, "")
       .trim();
   }
 

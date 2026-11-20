@@ -148,6 +148,12 @@ function bind() {
       ctx.toast(warning);
       return;
     }
+    // Salvare snippet e domini con l'interruttore spento è il modo più facile per credere di aver
+    // configurato l'iniezione e non vedere niente in pagina: lo si dice qui.
+    if (!injector.on) {
+      ctx.toast("Salvato. L'Injector è spento: accendilo per iniettare");
+      return;
+    }
     ctx.toast(result.parsed.dropped ? "Salvato (domini non validi ignorati)" : "Impostazioni salvate");
   });
 }
@@ -190,12 +196,12 @@ export function render() {
     els.conflict.textContent = "";
   }
 
-  // Il container non è partito perché il campo non contiene uno snippet (tipico: solo l'ID).
+  // Il container non è partito perché il campo non contiene né uno snippet né un ID GTM.
   if (els.invalid) {
     const bad = !!(state.session && state.session.gtmInvalid);
     els.invalid.classList.toggle("is-hidden", !bad);
     els.invalid.textContent = bad
-      ? "⚠ Nel campo non c'è uno snippet GTM (manca googletagmanager.com/gtm.js): incolla il blocco completo, non solo l'ID. Il container non è stato caricato."
+      ? "⚠ Nel campo non c'è né uno snippet GTM né un ID (GTM-XXXX): incolla il blocco completo, il solo ID del container o il JavaScript da eseguire. Il container non è stato caricato."
       : "";
   }
 

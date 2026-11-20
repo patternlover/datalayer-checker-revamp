@@ -9,24 +9,58 @@
     document.dispatchEvent(new CustomEvent(CHANNEL + ":main", { detail: JSON.stringify(obj) }));
   }
 
-  function injectCode(codeToPush, tag) {
+  // Lo snippet può arrivare in tre forme: il loader standard (una funzione che crea lo script), un
+  // <script async src="...gtm.js?id=...">, oppure il solo ID del container. Prima si trattava tutto
+  // come testo da mettere in un <script>, e un loader con src perdeva l'URL: non si iniettava nulla.
+  function buildLoader(id) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+    var script = document.createElement("script");
+    script.async = true;
+    script.src = "https://www.googletagmanager.com/gtm.js?id=" + id;
+    return [script];
+  }
+
+  function nodesFromSnippet(raw) {
+    var nodes = [];
+    var re = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
+    var found = false;
+    var match;
+    while ((match = re.exec(raw))) {
+      found = true;
+      var srcMatch = /src\s*=\s*["']([^"']+)["']/i.exec(match[1] || "");
+      var el = document.createElement("script");
+      if (srcMatch) {
+        if (!/gtm\.js/i.test(srcMatch[1])) continue;
+        el.async = true;
+        el.src = srcMatch[1];
+      } else if ((match[2] || "").trim()) {
+        el.textContent = match[2];
+      } else {
+        continue;
+      }
+      nodes.push(el);
+    }
+    if (!found) nodes.push(Object.assign(document.createElement("script"), { textContent: raw }));
+    return nodes;
+  }
+
+  function injectCode(raw, tag) {
     var tagName = document.getElementsByTagName(tag)[0];
     if (!tagName) return;
-    var script = document.createElement("script");
-    script.textContent = codeToPush;
-    if (tag === "head") {
-      try {
-        tagName.prepend(script);
-      } catch (error) {
-        console.log(error);
+    var trimmed = String(raw || "").trim();
+    var nodes = /^GTM-[A-Z0-9]+$/.test(trimmed) ? buildLoader(trimmed) : nodesFromSnippet(trimmed);
+    var first = nodes[0];
+    nodes.forEach(function (node, index) {
+      if (index === 0 && tag === "head") {
+        try {
+          tagName.prepend(node);
+          return;
+        } catch (error) {}
       }
-    } else if (tag === "body") {
-      try {
-        tagName.appendChild(script);
-      } catch (error) {
-        console.log(error);
-      }
-    }
+      tagName.appendChild(node);
+    });
+    return first;
   }
 
   // Container già caricati dal sito: iniettarli una seconda volta duplica tag e listener
@@ -51,17 +85,20 @@
     } catch (error) {}
   }
 
-  // Il campo "Snippet del container" accetta spesso il solo ID (GTM-XXXX): incollato come script
-  // è un'espressione che va in ReferenceError, senza dire niente. Qui si riconosce e si ferma.
+  // Il campo accetta tre forme: il blocco completo (funzione loader o <script src>), il solo ID
+  // (GTM-XXXX, da cui buildLoader costruisce il loader) e JavaScript incollato a mano. Prosa o un
+  // refuso non devono finire in pagina come script: li' si ferma e la card lo dice.
   function looksLikeSnippet(code) {
-    return /googletagmanager\.com\/gtm\.js/.test(code);
+    if (/googletagmanager\.com\/gtm\.js/.test(code)) return true;
+    if (/^GTM-[A-Z0-9]+$/.test(String(code).trim())) return true;
+    return /[=();{}]/.test(code);
   }
 
   function injectOnce(code, position) {
     if (typeof code !== "string" || code === "") return;
     if (!looksLikeSnippet(code)) {
       console.error(
-        "[DataLayer Checker] GTM Injector: nel campo non c'è uno snippet GTM (manca googletagmanager.com/gtm.js). Incolla il blocco completo, non solo l'ID."
+        "[DataLayer Checker] GTM Injector: nel campo non c'e' ne' uno snippet GTM ne' un ID (GTM-XXXX): incolla il blocco completo o il solo ID del container."
       );
       send({ __dlc: "gtmInvalid" });
       return;
