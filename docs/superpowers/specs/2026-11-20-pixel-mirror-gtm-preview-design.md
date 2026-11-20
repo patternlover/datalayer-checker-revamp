@@ -220,3 +220,38 @@ installata il ramo `sendMessage` sostituisce il popup e la tab viene letta comun
 Rete dello stesso checkout: 3 richieste verso `sgtm.giuseppezanotti.com`, quindi il sito manda già
 gli hit a un container server. La preview di quel container è la strada che non dipende né dalla
 sandbox né da Tag Assistant.
+
+## Il container c'è ma la pagina risulta senza tag (misurato 2026-11-21)
+
+Sul checkout di produzione: `typeof google_tag_manager === "object"`,
+`typeof window.__TAG_ASSISTANT_API === "object"`, e `data-tag-assistant-prod-present` valorizzato al
+momento del caricamento (valori letti in console). Cioè il container iniettato c'è, gira in debug e
+la companion di Tag Assistant è installata. Eppure la riga del checkout nel pannello dice «No Google
+tags found», mentre quella del carrello elenca i suoi eventi.
+
+Cosa dice il bootstrap di debug (`https://www.googletagmanager.com/debug/bootstrap?id=…`, letto il
+2026-11-21) su cosa resta:
+
+- `Z(a,b)` = `uc(a) ? __TAG_ASSISTANT_API.sendMessage(b) : a.Y?.postMessage(b,a.v)`; `uc` rilegge
+  `window.__TAG_ASSISTANT_API` a ogni messaggio, quindi una companion installata dopo viene presa —
+  non serve reinstallare nulla per farla valere;
+- il battito è di un `PING` al secondo e dopo 30 secondi lo stato diventa `NOT_CONNECTED`; ma il
+  punto che conta è `vc()`: se il primo ping non trova chi risponde entro **5 secondi**, la pagina
+  logga `checkHeartbeat: first ping timeout so aborting`, passa a `NOT_CONNECTED` e **riprende il
+  container come normale** (`resume` delle code con `!data.debug`). Da lì in poi quella pagina non
+  riferisce più niente al pannello;
+- `window.open` non sta in questo file: il ramo «apro io Tag Assistant» è in `gtm.js`, e vale solo
+  quando l'API non c'è.
+
+Conseguenza operativa: una pagina arriva in debug solo se il pannello la sta ascoltando nei primi
+secondi di vita. Da qui le due sequenze che funzionano, e una che non funziona:
+
+- **funziona** aprire la preview direttamente sull'URL del checkout, così il pannello è agganciato
+  dal primo istante del documento;
+- **funziona** se la companion è installata e la tab è quella della sessione di preview;
+- **non funziona** arrivare al checkout per navigazione con la preview partita da un'altra pagina:
+  il documento nasce, il ping scade, e l'istanza continua come container normale.
+
+Per non dipendere da questo, i due controlli che non passano da Tag Assistant: la tab **Top**
+dell'estensione (mostra i push rispecchiati) e la preview del **container server**, che su questo
+store riceve già gli hit (`sgtm.giuseppezanotti.com`).
