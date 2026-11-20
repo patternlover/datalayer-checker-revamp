@@ -172,3 +172,26 @@ storefront, così `gtm_debug` è nel documento fin dal primo istante.
 Secondo difetto trovato nello stesso giro: `mirrorToTop` era atteso dentro la coda `serial` della
 tab, la stessa degli snapshot del `dataLayer`. Un `executeScript` lento bastava a mettersi davanti
 alla lettura e a far sembrare il pannello fermo; ora il ponte parte e non si aspetta.
+
+## Verifica su uno store di produzione (2026-11-21)
+
+Misurato sul checkout vero di uno store Shopify, con l'estensione 1.11.0 caricata in Chrome 158 e
+l'Injector acceso sul container del sito (snippet standard, dominio dello store):
+
+- nel frame principale del checkout girano il container del sito e la sua destinazione GA4: uno
+  dei due viene solo dal tema, quindi l'iniezione ha funzionato dove non c'era nessun container;
+- l'attributo `data-tag-assistant-prod-present` è presente: l'istanza si dichiara in debug;
+- nel `dataLayer` del Top c'è `begin_checkout` con il suo `ecommerce`, e il container gli ha
+  messo `gtm.uniqueEventId`: l'ha processato, quindi i suoi tag sono partiti (il doppio invio è
+  reale, non teorico);
+- il frame del sandbox riporta **lo stesso** container del Top: `containers.pixel` e
+  `containers.injected` si sovrappongono, `conflict: true`, e la card *Rispecchia pixel sul Top*
+  lo segnala;
+- la cattura del pixel resta attiva: 26 eventi dal frame sandbox nella stessa sessione.
+
+Cosa non è stato possibile verificare da un agente, e resta un passo umano: Tag Assistant si
+aggancia solo alla tab che apre **lui**. Da qui il pannello mostra `Not connected` / `0 Google
+tags found` anche con l'istanza in debug, perché la tab del checkout è stata aperta a mano. La
+ricetta che funziona è quella dell'interfaccia: Preview da GTM, e poi carrello → checkout
+**nella stessa tab** che ha aperto Tag Assistant. Se il checkout si apre in una tab nuova, o fa
+un salto su un altro dominio, Tag Assistant si sgancia e scrive `Debug window closed`.
