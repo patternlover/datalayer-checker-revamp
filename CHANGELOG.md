@@ -11,6 +11,8 @@ Le voci qui sotto stanno su una riga per frase: è il testo che finisce nelle re
 - Gli eventi `gtm.*` del container che gira nel sandbox si scartano, e `gtm.uniqueEventId`/`gtm.start` si tolgono prima del push: con l'id interno del sandbox il container del Top scarterebbe l'evento come già visto.
 - Se il container iniettato nel Top gira anche nel pixel, *Impostazioni* lo dice: rispecchiare lo fa partire due volte, e un `purchase` risulterebbe doppio. L'avviso non blocca.
 - `session.containers.pixel` separa i container visti nel frame pixel da quelli della pagina.
+- **Collega a Tag Assistant** (card Injector, acceso di default): prima di iniettare mette `data-tag-assistant-prod-present` su `<html>`. `gtm.js` si dichiara in debug solo con `gtm_debug` in query, referrer di tagassistant.google.com, cookie `__TAG_ASSISTANT` o quell'attributo: sul checkout i primi tre non ci sono, quindi il container iniettato girava senza comparire in preview.
+- Il ponte non passa più dalla coda `serial` della tab: un `executeScript` lento non mette più in fila gli snapshot del dataLayer (era il modo per far sembrare il pannello fermo).
 - Pagine demo nuove in `docs/demo/` (`mirror.html`, `mirror-prodotti.html`) e `node test/e2e-mirror.mjs`: carica l'estensione in un profilo temporaneo, mette in test le due pagine e controlla cosa arriva nel `dataLayer` del Top. Google Chrome ignora `--load-extension`: lo script usa il dominio CDP `Extensions` con `--enable-unsafe-extension-debugging`.
 
 ## 1.10.0 — 2026-11-19

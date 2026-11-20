@@ -12,6 +12,7 @@ export function init(context) {
     domains: $("#gtm-domains"),
     code: $("#gtm-code"),
     toggle: $("#injector-toggle"),
+    ta: $("#injector-ta"),
     save: $("#save-settings"),
     conflict: $("#container-conflict"),
     mirrorToggle: $("#mirror-toggle"),
@@ -19,6 +20,7 @@ export function init(context) {
     mirrorNote: $("#mirror-note"),
   };
   bind();
+  bindTagAssistant();
   bindMirror();
   fillFields();
   loadMirror();
@@ -146,6 +148,22 @@ function bind() {
       return;
     }
     ctx.toast(result.parsed.dropped ? "Salvato (domini non validi ignorati)" : "Impostazioni salvate");
+  });
+}
+
+// gtm.js decide se è in debug da `gtm_debug` in query, referrer di tagassistant.google.com,
+// cookie `__TAG_ASSISTANT` o l'attributo `data-tag-assistant-prod-present` su <html>.
+// Sul checkout i primi tre non esistono: il container iniettato gira e non si collega alla
+// preview, e Tag Assistant resta vuoto. Questa opzione mette l'attributo prima di iniettare.
+const TA_KEY = "injectorTA";
+
+async function bindTagAssistant() {
+  if (!els.ta) return;
+  const stored = await chrome.storage.sync.get([TA_KEY]);
+  els.ta.checked = stored[TA_KEY] !== false;
+  els.ta.addEventListener("change", async () => {
+    await chrome.storage.sync.set({ [TA_KEY]: els.ta.checked });
+    ctx.toast(els.ta.checked ? "Container iniettato in debug: la preview lo vede" : "Container iniettato senza debug");
   });
 }
 

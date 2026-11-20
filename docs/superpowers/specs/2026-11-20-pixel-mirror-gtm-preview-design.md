@@ -142,3 +142,33 @@ Verifica: `node test/e2e-mirror.mjs`, 15/15. Misurato su Chrome 158 headless il 
 Non verificato qui, e da provare sul campo: il checkout vero di Shopify (servono un container
 iniettato nel Top e una preview aperta su quel container) e gli app pixel in worker, dove non c'è
 un `window.dataLayer` da agganciare.
+
+## Perché la preview restava vuota (misurato 2026-11-20)
+
+Il ponte funzionava (eventi nel `dataLayer`, tab Top piena) e Tag Assistant non mostrava niente.
+Causa, letta nel sorgente di `gtm.js` (`https://www.googletagmanager.com/gtm.js?id=…`, scaricato
+il 2026-11-20): un'istanza entra in debug **solo** con uno di quattro segnali, e li enumera come
+`GTM_DEBUG_PARAM` (`gtm_debug` in query), `REFERRER` (host `tagassistant.google.com`), `COOKIE`
+(cookie `__TAG_ASSISTANT`, **due** underscore) e `EXTENSION_PARAM` (attributo
+`data-tag-assistant-prod-present` su `<html>`, valore = timestamp entro −15/+5 minuti, oppure
+evento `TAProdDebugSignal` sulla window).
+
+Sul checkout il primo segnale non c'è (la navigazione dal carrello non porta dietro il parametro),
+il secondo e il terzo nemmeno: il container iniettato gira, esegue i tag, e non si presenta a
+nessuna preview. Non è un problema del ponte, è un'istanza che non sa di essere in debug.
+
+Verificato anche che **non** è colpa della CSP: il checkout di uno store Shopify (`allbirds.com`,
+2026-11-20) manda `content-security-policy: block-all-mixed-content; upgrade-insecure-requests;
+frame-ancestors …` senza `script-src` né `default-src`, quindi uno script inline iniettato non
+viene bloccato. In locale ho verificato il contrario per una CSP stretta: uno script inline creato
+dall'estensione è bloccato **in silenzio** (nessuna eccezione, solo una voce in console), che è il
+modo in cui «non si vede più niente» senza indizi.
+
+Rimedio implementato: `scripts/gtmcode.js` mette `data-tag-assistant-prod-present` prima di
+iniettare, dietro l'opzione **Collega a Tag Assistant** (accesa di default). L'altra strada, senza
+codice: aprire la preview direttamente **sull'URL del checkout** invece di partire dallo
+storefront, così `gtm_debug` è nel documento fin dal primo istante.
+
+Secondo difetto trovato nello stesso giro: `mirrorToTop` era atteso dentro la coda `serial` della
+tab, la stessa degli snapshot del `dataLayer`. Un `executeScript` lento bastava a mettersi davanti
+alla lettura e a far sembrare il pannello fermo; ora il ponte parte e non si aspetta.

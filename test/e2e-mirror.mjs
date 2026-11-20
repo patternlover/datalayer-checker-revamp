@@ -248,9 +248,70 @@ async function main() {
     check("payload identico", !!started && started.checkout && started.checkout.totalPrice.amount === 89, JSON.stringify(started && started.checkout));
     check("chiavi interne di GTM tolte", !!started && !("gtm.uniqueEventId" in started), JSON.stringify(Object.keys(started || {})));
 
+    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false, injectorTA: true })`);
+
     const session = JSON.parse(await evaluate(ui.client, "JSON.stringify(window.__e2eLast || null)"));
     const pixelEvents = session && Array.isArray(session.events) ? session.events.filter((e) => e.frame === "pixel").length : 0;
     check("la tab Pixel continua a raccogliere", pixelEvents > 0 && session.pixelSeen === true, `eventi pixel: ${pixelEvents}, pixelSeen: ${session.pixelSeen}`);
+
+    // ---- 1b. Injector: il container iniettato deve entrare in debug (attributo su <html>) ----
+    // gtm.js si dichiara in debug solo con uno di quattro segnali (sorgente di gtm.js); sul
+    // checkout l'unico che possiamo dargli è `data-tag-assistant-prod-present`. Snippet finto:
+    // qui interessa che il codice arrivi in pagina e che l'attributo ci sia.
+    const CODE = "window.__injected = 1;";
+    const setInjector = (ta) =>
+      evaluate(
+        ui.client,
+        `(async () => {
+           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify("window.__injected = 1;")}, gtmDomains: ["127.0.0.1"] });
+           document.getElementById("gtm-domains").value = "127.0.0.1";
+           document.getElementById("gtm-code").value = "window.__injected = 1;";
+           const toggle = document.getElementById("injector-toggle");
+           if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
+           await new Promise((r) => setTimeout(r, 300));
+           toggle.checked = true;
+           toggle.dispatchEvent(new Event("change"));
+           await new Promise((r) => setTimeout(r, 1000));
+           return JSON.stringify({ on: toggle.checked, reason: (await chrome.storage.sync.get(["gtmcodepush"])).gtmcodepush });
+         })()`
+      );
+
+    // La UI legge la tab in test all'avvio: dopo il pin va ricaricata, altrimenti injectIntoActiveTab
+    // lavora con tabId nullo (è quello che succede a chi apre il popup dopo aver pinnato).
+    await ui.client.send("Page.reload", { ignoreCache: true });
+    await sleep(1500);
+    const injectorState = JSON.parse(await setInjector(true));
+    const injected = JSON.parse(
+      await evaluate(
+        checkout.client,
+        `JSON.stringify({
+           injected: window.__injected === 1,
+           ta: document.documentElement.getAttribute("data-tag-assistant-prod-present"),
+         })`
+      )
+    );
+    check("injector: attivato dalla UI", injectorState.on === true, injectorState);
+    check("injector: lo snippet arriva in pagina", injected.injected === true, JSON.stringify(injected));
+    check(
+      "injector: container in debug per Tag Assistant",
+      typeof injected.ta === "string" && Math.abs(Date.now() - Number(injected.ta)) < 300000,
+      String(injected.ta)
+    );
+
+    await checkout.client.send("Page.reload", { ignoreCache: true });
+    await sleep(2500);
+    await setInjector(false);
+    const noTa = JSON.parse(
+      await evaluate(
+        checkout.client,
+        `JSON.stringify({
+           injected: window.__injected === 1,
+           ta: document.documentElement.getAttribute("data-tag-assistant-prod-present"),
+         })`
+      )
+    );
+    check("injector: senza l'opzione nessun segnale di debug", noTa.injected === true && noTa.ta === null, JSON.stringify(noTa));
+
 
     // ---- 2. pagina prodotto: con scope solo-checkout non deve passare niente ----
     const product = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-prodotti.html`);

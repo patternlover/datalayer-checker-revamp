@@ -25,14 +25,18 @@
   async function sendGtmCode() {
     if (!isTopFrame()) return;
 
-    var { gtmcode, gtmcodepush, gtmDomains } = await chrome.storage.sync.get(["gtmcode", "gtmcodepush", "gtmDomains"]);
+    var { gtmcode, gtmcodepush, gtmDomains, injectorTA } = await chrome.storage.sync.get(["gtmcode", "gtmcodepush", "gtmDomains", "injectorTA"]);
     if (gtmcodepush !== true) return;
     if (typeof gtmcode !== "string" || gtmcode === "") return;
     if (!hostMatches(location.hostname, gtmDomains)) return;
 
     // Canale privato (evento DOM): il codice del container non passa da window.postMessage,
     // quindi i listener "message" del sito non lo vedono.
-    document.dispatchEvent(new CustomEvent("__dlc_msg:isolated", { detail: JSON.stringify({ action: "setGTMCode", code: cleanGtmCode(gtmcode) }) }));
+    document.dispatchEvent(
+      new CustomEvent("__dlc_msg:isolated", {
+        detail: JSON.stringify({ action: "setGTMCode", code: cleanGtmCode(gtmcode), ta: injectorTA !== false }),
+      })
+    );
   }
 
   if (!window.__dlcBridgeReady) {
@@ -50,7 +54,7 @@
 
     chrome.storage.onChanged.addListener(function (changes, area) {
       if (area !== "sync") return;
-      if (changes.gtmcodepush || changes.gtmcode || changes.gtmDomains) sendGtmCode();
+      if (changes.gtmcodepush || changes.gtmcode || changes.gtmDomains || changes.injectorTA) sendGtmCode();
     });
   }
 

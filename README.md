@@ -63,6 +63,12 @@ gli eventi raccolti.
 - **GTM Injector** — domini + snippet in *Impostazioni*, solo frame principale e solo `https`.
   Il chip nell'header dice se il container è in pagina; un banner ricorda che è attivo
   (**Disattiva** spegne, **×** chiude il banner). Se il container c'è già, l'iniezione si salta.
+- **Collega a Tag Assistant** (nella card dell'Injector, acceso di default) — `gtm.js` entra in
+  debug solo con uno di quattro segnali: `gtm_debug` in query, referrer di
+  `tagassistant.google.com`, cookie `__TAG_ASSISTANT`, oppure l'attributo
+  `data-tag-assistant-prod-present` su `<html>`. Sul checkout i primi tre non ci sono, quindi un
+  container iniettato lì gira ma non compare in preview: l'opzione mette l'attributo prima di
+  iniettare, e Tag Assistant lo vede.
 - **Rispecchia pixel sul Top** — *Impostazioni*, spento di default. Gli eventi del checkout
   (`checkout_started`, `add_payment_info`, `checkout_completed`…) nascono nel sandbox del Custom
   Pixel e il `dataLayer` della pagina non li vede: con questa opzione arrivano **identici** nel

@@ -29,8 +29,8 @@
     }
   }
 
-  // Container gi\u00e0 caricati dal sito: iniettarli una seconda volta duplica tag e listener
-  // e pu\u00f2 rompere funzioni del sito (carrello, wishlist...).
+  // Container già caricati dal sito: iniettarli una seconda volta duplica tag e listener
+  // e può rompere funzioni del sito (carrello, wishlist...).
   function containersOnPage(ids) {
     return ids.filter(function (id) {
       try {
@@ -38,6 +38,17 @@
       } catch (e) {}
       return !!document.querySelector('script[src*="id=' + id + '"]');
     });
+  }
+
+  // gtm.js decide se è in debug da quattro segnali (sorgente di gtm.js, 2026-11-20):
+  // `gtm_debug` in query, referrer di tagassistant.google.com, cookie `__TAG_ASSISTANT`, oppure
+  // l'attributo `data-tag-assistant-prod-present` su <html> (il timestamp deve stare nella
+  // finestra che gtm.js accetta). Sul checkout i primi tre non ci sono: senza segnale il
+  // container iniettato gira ma non si collega alla preview, e Tag Assistant resta vuoto.
+  function markTagAssistant() {
+    try {
+      document.documentElement.setAttribute("data-tag-assistant-prod-present", String(Date.now()));
+    } catch (error) {}
   }
 
   function injectOnce(code, position) {
@@ -63,7 +74,10 @@
     } catch (e) {
       return;
     }
-    if (data && data.action === "setGTMCode") injectOnce(data.code, data.position);
+    if (data && data.action === "setGTMCode") {
+      if (data.ta) markTagAssistant();
+      injectOnce(data.code, data.position);
+    }
   });
 
   send({ action: "gtmCodeReady" });

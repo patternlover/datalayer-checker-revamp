@@ -630,7 +630,10 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
   }
 
   if (msg && typeof msg === "object" && msg.type === "pixelMirror") {
-    await mirrorToTop(tabId, frameUrl, msg.events || []);
+    // Non si aspetta: l'executeScript verso il Top passa per il bridge del browser, e questa
+    // funzione gira nella coda `serial` della tab insieme a snapshot e navigazioni. Aspettandolo,
+    // un push ogni secondo basta a mettersi in fila davanti alla lettura del dataLayer.
+    mirrorToTop(tabId, frameUrl, msg.events || []).catch(() => {});
     return;
   }
 

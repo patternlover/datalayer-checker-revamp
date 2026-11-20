@@ -1583,3 +1583,29 @@ html.is-popup .app {
         transition: none !important;
     }
 }
+
+/* Riga con checkbox dentro una card di impostazioni (es. "Collega a Tag Assistant"). */
+.check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.check-row input {
+    margin: 2px 0 0;
+    flex: 0 0 auto;
+    accent-color: var(--teal);
+}
+
+.check-row strong {
+    display: block;
+    font-weight: 650;
+}
+
+.check-row small {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+}
