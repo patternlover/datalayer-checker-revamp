@@ -6,6 +6,7 @@ Le voci qui sotto stanno su una riga per frase: è il testo che finisce nelle re
 
 ## 1.11.0 — 2026-11-20
 
+- **Standard ponte pixel → Top** (`docs/pixel-to-top-bridge.md` + `docs/snippets/`): contratto `hello`/`ready`/`push` su `postMessage`, snippet da incollare nel Custom Pixel e ricevitore da mettere nel Top (tag HTML su *Initialization*, o l'estensione). Verificato da `node test/bridge-standard.mjs`: payload identico, `gtm.*` scartati, push in stile `gtag` conservati come `arguments`.
 - **Stato della pagina** (*Impostazioni*): legge la tab in test e mostra container in pagina, se l'Injector ha iniettato, se il container è in debug, se c'è il canale di Tag Assistant (`__TAG_ASSISTANT_API`), se il `dataLayer` ha eventi di checkout e se il sandbox del pixel è presente. È il primo posto da guardare quando "non si vede niente".
 - **Rispecchia pixel sul Top** (*Impostazioni*, spento di default): gli eventi che il Custom Pixel spinge nel sandbox arrivano identici nel `dataLayer` del frame principale, dove GTM Preview li mostra. È l'unico modo per vedere `checkout_started`, `add_payment_info` e `checkout_completed`: il container del tema non li riceve e Tag Assistant non si aggancia al sandbox.
 - Lo scope di default è **solo checkout e ordini** (`/checkouts/`, `/orders/`), letto dal path del frame sandbox e non dal Top: con il checkout a pagina unica la rotta del Top non cambia fra i passi. *Tutte le pagine* è l'altra scelta.

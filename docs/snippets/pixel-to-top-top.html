@@ -1,0 +1,32 @@
+<script>
+(function () {
+  var CHANNEL = "shopify-pixel-to-top";
+  window.dataLayer = window.dataLayer || [];
+  if (!window.__pixelToTopReady) {
+    window.__pixelToTopReady = true;
+    window.addEventListener("message", function (e) {
+      var d = e.data;
+      if (!d || d.channel !== CHANNEL) return;
+      // Il pixel annuncia la sua presenza: si risponde, altrimenti la sua coda resta chiusa. Serve
+      // perché i due lati possono nascere in qualunque ordine (il sandbox prima del container, il
+      // container prima del sandbox).
+      if (d.type === "hello") {
+        try { e.source.postMessage({ channel: CHANNEL, type: "ready" }, "*"); } catch (err) {}
+        return;
+      }
+      if (d.type !== "push") return;
+      if (d.isGtag) {
+        window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+        window.gtag.apply(null, d.payload);
+      } else {
+        window.dataLayer.push(d.payload);
+      }
+    });
+  }
+  // Sveglia i sandbox già presenti: senza questo i loro eventi restano in coda fino al prossimo giro.
+  var frames = document.querySelectorAll('iframe[src*="/sandbox/"]');
+  for (var i = 0; i < frames.length; i++) {
+    try { frames[i].contentWindow.postMessage({ channel: CHANNEL, type: "ready" }, "*"); } catch (e) {}
+  }
+})();
+</script>
