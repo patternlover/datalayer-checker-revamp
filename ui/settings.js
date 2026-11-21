@@ -1,6 +1,6 @@
 import { $, parseDomains, gtmCodeWarning } from "./util.js";
 import { state } from "./store.js";
-import { injector, setOn, saveSettings } from "./injector.js";
+import { injector, setOn, saveSettings, autoConfigure } from "./injector.js";
 
 let ctx;
 let els;
@@ -19,8 +19,10 @@ export function init(context) {
     mirrorToggle: $("#mirror-toggle"),
     mirrorScope: $("#mirror-scope"),
     mirrorNote: $("#mirror-note"),
+    autoconfig: $("#injector-autoconfig"),
   };
   bind();
+  bindAutoconfig();
   bindTagAssistant();
   bindMirror();
   fillFields();
@@ -171,6 +173,31 @@ async function bindTagAssistant() {
   els.ta.addEventListener("change", async () => {
     await chrome.storage.sync.set({ [TA_KEY]: els.ta.checked });
     ctx.toast(els.ta.checked ? "Container iniettato in debug: la preview lo vede" : "Container iniettato senza debug");
+  });
+}
+
+// Un click al posto di quattro campi, tre interruttori e un pin: il container si legge dalla pagina
+// e chi lo usa non deve sapere in che forma va scritto.
+function bindAutoconfig() {
+  if (!els.autoconfig) return;
+  els.autoconfig.addEventListener("click", async () => {
+    if (state.tabId == null) {
+      ctx.toast("Prima scegli la tab in test («Testa …» qui sopra)");
+      return;
+    }
+    const result = await autoConfigure(state.tabId).catch(() => ({ ok: false, reason: "error" }));
+    if (!result.ok) {
+      ctx.toast(
+        result.reason === "no-container"
+          ? "Nessun container GTM in questa pagina: apri una pagina dello store dove il pixel o il tema lo caricano"
+          : "Non riesco a configurare da questa pagina"
+      );
+      return;
+    }
+    await loadMirror();
+    fillFields();
+    render();
+    ctx.toast("Configurato: " + result.id + " su " + result.host + " · Injector e ponte accesi");
   });
 }
 

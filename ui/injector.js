@@ -86,6 +86,69 @@ export async function injectIntoActiveTab() {
     .catch(() => {});
 }
 
+// Il container non si fa scrivere a mano: si legge dalla pagina. Sulla stessa origine il tema (o il
+// pixel) ha già `google_tag_manager` popolato, quindi il nome del container è un dato che c'è.
+export async function autoConfigure(tabId) {
+  if (tabId == null) return { ok: false, reason: "no-tab" };
+
+  let tab = null;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch (error) {
+    return { ok: false, reason: "no-tab" };
+  }
+  const host = hostnameOf((tab && tab.url) || "");
+  if (!host) return { ok: false, reason: "no-host" };
+
+  let frames = [];
+  try {
+    frames = await chrome.webNavigation.getAllFrames({ tabId: tabId });
+  } catch (error) {}
+
+  // Si guarda prima il frame principale, poi i sandbox: sul checkout il container vive nel pixel.
+  const ordered = (frames || []).slice().sort((a, b) => (a.parentFrameId === -1 ? -1 : b.parentFrameId === -1 ? 1 : 0));
+  let found = null;
+  for (const frame of ordered) {
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: tabId, frameIds: [frame.frameId] },
+        world: "MAIN",
+        func: function () {
+          try {
+            return Object.keys(window.google_tag_manager || {}).filter(function (k) {
+              return /^GTM-[A-Z0-9]+$/.test(k);
+            });
+          } catch (e) {
+            return [];
+          }
+        },
+      });
+      const ids = (result && result.result) || [];
+      if (ids.length) {
+        found = ids[0];
+        break;
+      }
+    } catch (error) {}
+  }
+
+  if (!found) return { ok: false, reason: "no-container", host: host };
+
+  // Un click accende tutto quello che serve al debug: iniezione, segnale per Tag Assistant e ponte.
+  injector.domains = [host];
+  injector.code = found;
+  injector.on = true;
+  await chrome.storage.sync.set({
+    gtmDomains: [host],
+    gtmcode: found,
+    gtmcodepush: true,
+    injectorTA: true,
+    pixelmirror: true,
+    pixelmirrorScope: "solo-checkout",
+  });
+  injectIntoActiveTab();
+  return { ok: true, id: found, host: host };
+}
+
 export function updateChip(chipEl) {
   const on = injector.on;
   const inDomain = on && hostMatches(state.tabHost, injector.domains);

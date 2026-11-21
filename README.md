@@ -64,6 +64,7 @@ gli eventi raccolti.
   `<script src>`, solo ID `GTM-XXXX` oppure JavaScript), solo frame principale e solo `https`.
   Il chip nell'header dice se il container è in pagina; un banner ricorda che è attivo
   (**Disattiva** spegne, **×** chiude il banner). Se il container c'è già, l'iniezione si salta.
+- **Prendi il container da questa pagina** — il pulsante che evita la configurazione a mano: legge il container già in pagina (anche dal frame del pixel) e accende Injector, Tag Assistant e ponte.
 - **Collega a Tag Assistant** (nella card dell'Injector, acceso di default) — `gtm.js` entra in
   debug solo con uno di quattro segnali: `gtm_debug` in query, referrer di
   `tagassistant.google.com`, cookie `__TAG_ASSISTANT`, oppure l'attributo

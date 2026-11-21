@@ -397,6 +397,34 @@ async function main() {
     );
     await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
 
+    // Un click al posto di quattro campi e tre interruttori: il container si legge dalla pagina.
+    await checkout.client.send("Page.reload", { ignoreCache: true });
+    await sleep(2500);
+    await evaluate(
+      checkout.client,
+      `window.google_tag_manager = Object.assign({}, window.google_tag_manager || {}, { "GTM-AUTOCFG1": {} })`
+    );
+    const autoconfig = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           await chrome.storage.sync.set({ gtmcodepush: false, injectorTA: false, pixelmirror: false, gtmcode: "", gtmDomains: [] });
+           await new Promise((r) => setTimeout(r, 300));
+           document.getElementById("injector-autoconfig").click();
+           await new Promise((r) => setTimeout(r, 1200));
+           const st = await chrome.storage.sync.get(null);
+           return JSON.stringify({ code: st.gtmcode, push: st.gtmcodepush, ta: st.injectorTA, mirror: st.pixelmirror, scope: st.pixelmirrorScope, domini: st.gtmDomains });
+         })()`
+      )
+    );
+    check("autoconfig: legge il container dalla pagina", autoconfig.code === "GTM-AUTOCFG1", JSON.stringify(autoconfig));
+    check(
+      "autoconfig: accende injector, Tag Assistant e ponte",
+      autoconfig.push === true && autoconfig.ta === true && autoconfig.mirror === true && autoconfig.scope === "solo-checkout"
+    );
+    check("autoconfig: prende il dominio dalla tab", JSON.stringify(autoconfig.domini) === JSON.stringify(["127.0.0.1"]), JSON.stringify(autoconfig.domini));
+    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
+
 
     // ---- 2. pagina prodotto: con scope solo-checkout non deve passare niente ----
     const product = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-prodotti.html`);
