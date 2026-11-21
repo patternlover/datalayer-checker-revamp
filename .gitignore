@@ -1,1 +1,4 @@
 .DS_Store
+
+# schermate del banco visivo (tools/ui-shots.mjs)
+.ui-shots/

@@ -99,6 +99,21 @@ Le schermate aggiornate sono in `docs/screenshots/1.11.0/` (`01-eventi`, `02-eve
 - La struttura dei controlli che il JS manipola: puoi cambiare l'involucro, non gli id.
 - `manifest.json`, `scripts/*`, `lib/*`, `test/*`.
 
+## Come produce le schermate (un comando)
+
+```bash
+node tools/ui-shots.mjs
+```
+
+Apre l'estensione in un Chrome headless con la pagina demo, mette la tab in test, e salva **dieci**
+schermate in `.ui-shots/`: cinque alla misura del popup (**420×600**) e cinque in una tab larga
+(**1100×800**) — `1-eventi`, `2-eventi-dettaglio`, `3-impostazioni`, `4-impostazioni-aperte`, `5-uat`.
+Stampa anche una tabella con le misure che nell'immagine non si vedono (larghezza di lista e
+dettaglio, larghezza del titolo, quanti elementi sbordano). Zero dipendenze: serve Node e Chrome.
+
+Se il tuo ambiente può eseguire comandi, eseguilo e leggi i PNG: è il modo per vedere l'interfaccia
+vera, non una descrizione. Se non può, le schermate le produce chi ha il repo e te le passa.
+
 ## Cosa consegnare
 
 - Patch **per file** in diff unificati (`index.html`, `gstyle.css`, e solo righe di markup dentro
