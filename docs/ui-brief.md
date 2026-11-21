@@ -63,6 +63,23 @@ Classi il cui comportamento è legato al JS/CSS: `.setting`, `.setting-row`, `.s
 - **Eventi**: lista a sinistra con separatori di navigazione, dettaglio a destra, split trascinabile;
   il push si legge riga per riga e i path si copiano nel formato della Data Layer Variable di GTM.
 
+## Difetti misurati il 2026-11-21 (con numeri, non impressioni)
+
+1. **Riparato qui**: `#events-view` ereditava `flex: 0 0 250px; width: 250px` dalla regola della
+   sidebar (un selettore appeso dopo la rimozione del CSS delle Hit): nel popup da 420px la vista
+   eventi occupava 250px e lasciava un vuoto grigio. Ora è 420/420.
+2. **Aperto**: nella vista eventi a 420px la lista (42% dell'altezza) resta quasi vuota quando c'è
+   una sola navigazione, e il dettaglio si prende il 58%: le proporzioni vanno riviste sul caso
+   "pochi eventi".
+3. **Aperto**: `.detail-head` mette nome, orario con millisecondi (`18:48:40.577`) e pulsante *Copia*
+   sulla stessa riga. Con nomi lunghi il nome si tronca (`dl_view_cart` → `dl_vie…`) perché l'orario
+   non si restringe. Priorità al nome; orario su una seconda riga o più corto.
+4. **Aperto**: lo stato vuoto della lista e del dettaglio non è progettato: una navigazione sola
+   produce una lista che sembra rotta.
+
+Le schermate aggiornate sono in `docs/screenshots/1.11.0/` (`01-eventi`, `02-eventi-dettaglio`,
+`03-impostazioni`, `04-impostazioni-aperte`, `05-uat`), 420×600, scala 2.
+
 ## Cosa migliorerei (osservazioni, non obblighi)
 
 1. Spaziatura irregolare nelle righe di Impostazioni quando una riga è aperta: il distacco fra

@@ -424,11 +424,20 @@ button:disabled {
    Nel pannello stretto le due parti sono impilate e si trascina in verticale; in una finestra
    larga la lista sta a sinistra e si trascina in orizzontale. Il cursore a due frecce compare
    solo sul separatore, quindi non interferisce con la selezione del testo. */
-#events-split,
+#events-split {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: transparent;
+    transition: background-color 0.12s ease;
+}
 
 #events-split:hover,
 #events-split:focus-visible,
-#events-split.is-dragging,
+#events-split.is-dragging {
+    background: var(--teal-3);
+    outline: none;
+}
 
 /* Durante il trascinamento non si seleziona testo per sbaglio. */
 body.is-splitting {
@@ -436,11 +445,19 @@ body.is-splitting {
 }
 
 @media (max-width: 620px) {
-    #events-split,
+    #events-split {
+        width: 100%;
+        height: 7px;
+        cursor: row-resize;
+    }
 }
 
 @media (min-width: 621px) {
-    #events-split,
+    #events-split {
+        width: 7px;
+        align-self: stretch;
+        cursor: col-resize;
+    }
 }
 
 /* ---------- Pulsanti e campi ---------- */
@@ -529,7 +546,9 @@ body.is-splitting {
 }
 
 /* ---------- Eventi ---------- */
-#events-view,
+#events-view {
+    flex-direction: row;
+}
 
 .events-sidebar {
     flex: 0 0 250px;
