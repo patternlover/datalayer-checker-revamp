@@ -24,11 +24,13 @@ export function init(context) {
     uimodeRow: $("#uimode-row"),
     uimodeBody: $("#uimode-body"),
     uimodeValue: $("#uimode-value"),
+    uimodeNote: $("#uimode-note"),
     injectorRow: $("#injector-row"),
     injectorBody: $("#injector-body"),
     injectorToggle: $("#injector-toggle"),
     injectorTa: $("#injector-ta"),
     container: $("#injector-container"),
+    manual: $("#injector-manual"),
     mirrorRow: $("#mirror-row"),
     mirrorBody: $("#mirror-body"),
     mirrorToggle: $("#mirror-toggle"),
@@ -64,7 +66,7 @@ function bindDisclosure(row, body) {
 async function bindUiMode() {
   const radios = document.querySelectorAll('input[name="uimode"]');
   if (!chrome.sidePanel) $("#uimode-sidepanel").classList.add("is-hidden");
-  const stored = await chrome.storage.local.get(["dlcUiMode"]);
+  const stored = await chrome.storage.local.get(["dlcUiMode", "dlcSidePanelBroken"]);
   // "window" era la vecchia modalità finestra: ora la più vicina è la tab.
   const raw = stored.dlcUiMode === "window" ? "tab" : stored.dlcUiMode;
   const mode = UI_MODES.includes(raw) ? raw : "popup";
@@ -73,6 +75,15 @@ async function bindUiMode() {
     els.uimodeValue.textContent = UI_MODE_LABELS[next];
   };
   apply(mode);
+  // Se questo browser non apre il pannello, lo si dice invece di lasciare l'icona muta o far
+  // credere che la scelta sia attiva.
+  if (els.uimodeNote) {
+    const broken = stored.dlcSidePanelBroken === true;
+    els.uimodeNote.textContent = broken
+      ? "Questo browser non apre il pannello laterale: l'icona apre una tab."
+      : "";
+    els.uimodeNote.classList.toggle("is-hidden", !broken);
+  }
   radios.forEach((radio) => {
     radio.addEventListener("change", async () => {
       if (!radio.checked) return;
@@ -121,11 +132,37 @@ function bindInjector() {
     ctx.toast("Inietto " + els.container.value);
   });
 
+  els.manual.addEventListener("change", () => applyManual());
+  els.manual.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyManual();
+    }
+  });
+
   els.injectorTa.addEventListener("change", async () => {
     await chrome.storage.sync.set({ [TA_KEY]: els.injectorTa.checked });
     injectIntoActiveTab();
     ctx.toast(els.injectorTa.checked ? "Container in debug per Tag Assistant" : "Container senza debug");
   });
+}
+
+// Un ID scritto a mano: niente domini da compilare, si prende quello della tab.
+async function applyManual() {
+  const value = (els.manual.value || "").trim().toUpperCase();
+  if (!/^GTM-[A-Z0-9]+$/.test(value)) {
+    ctx.toast("Un container ha la forma GTM-XXXX");
+    return;
+  }
+  const result = await chooseContainer(value);
+  if (!result.ok) {
+    ctx.toast("Serve una tab in test: premi «Testa …» qui sopra");
+    return;
+  }
+  els.manual.value = "";
+  els.injectorToggle.checked = true;
+  fill();
+  ctx.toast("Inietto " + value);
 }
 
 function openBody(row, body, open) {
@@ -143,14 +180,13 @@ function renderContainers() {
   });
   els.container.innerHTML = "";
   if (!ids.length) {
-    const opt = document.createElement("option");
-    opt.textContent = "nessuno in pagina";
-    opt.value = "";
-    els.container.appendChild(opt);
-    els.container.disabled = true;
+    // Niente in pagina: si può sempre scrivere l'ID di un container che la pagina non ha.
+    els.container.classList.add("is-hidden");
+    els.manual.classList.remove("is-hidden");
     return;
   }
-  els.container.disabled = false;
+  els.container.classList.remove("is-hidden");
+  els.manual.classList.add("is-hidden");
   ids.forEach((id) => {
     const opt = document.createElement("option");
     opt.value = id;

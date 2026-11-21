@@ -1428,6 +1428,23 @@ body.is-splitting {
 
 
 
+.mini-input {
+    width: 132px;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: right;
+}
+
+.mini-input:focus {
+    border-color: var(--teal-3);
+    outline: none;
+}
+
 .switch {
     position: relative;
     flex: 0 0 auto;
@@ -1636,6 +1653,12 @@ html.is-popup .app {
     gap: 12px;
     padding: 6px 0;
     font-size: 12px;
+    color: var(--muted);
+}
+
+.setting-note {
+    margin: 0 0 2px;
+    font-size: 11.5px;
     color: var(--muted);
 }
 

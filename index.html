@@ -142,6 +142,7 @@
                 <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span>Pannello laterale</span></label>
                 <label class="radio"><input type="radio" name="uimode" value="tab" /><span>Nuova tab</span></label>
               </div>
+              <p id="uimode-note" class="setting-note is-hidden"></p>
             </div>
           </section>
 
@@ -160,6 +161,7 @@
               <div class="setting-line">
                 <span>Container</span>
                 <select id="injector-container" class="mini-select" aria-label="Container da iniettare"></select>
+                <input id="injector-manual" class="mini-input is-hidden" type="text" inputmode="latin" autocomplete="off" spellcheck="false" placeholder="GTM-XXXX" aria-label="Container da iniettare a mano" />
               </div>
               <div class="setting-line">
                 <span>Collega a Tag Assistant</span>

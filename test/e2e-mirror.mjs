@@ -118,7 +118,7 @@ async function evaluate(client, expression) {
   const out = await client.send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
   if (out.exceptionDetails) {
     const text = out.exceptionDetails.exception ? out.exceptionDetails.exception.description : out.exceptionDetails.text;
-    throw new Error("exception: " + text);
+    throw new Error("exception: " + text + "\n  nello snippet: " + expression.replace(/\s+/g, " ").slice(0, 140));
   }
   return out.result.value;
 }
@@ -157,6 +157,16 @@ const PIN_SCRIPT = (needle) => `new Promise((resolve) => {
     setTimeout(() => resolve(tab.id), 2500);
   });
 })`;
+
+// Pin con attesa: la tab creata via CDP può non essere ancora in chrome.tabs.query.
+async function pinPage(ui, needle) {
+  for (let i = 0; i < 8; i++) {
+    const result = await evaluate(ui.client, PIN_SCRIPT(needle));
+    if (typeof result === "number") return result;
+    await sleep(500);
+  }
+  return "no-tab";
+}
 
 async function main() {
   const server = await serve();
@@ -334,7 +344,8 @@ async function main() {
     // Più container in pagina: si sceglie, e finché non si sceglie resta spento.
     const due = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-due.html`);
     opened.push(due);
-    const duePinned = await evaluate(ui.client, PIN_SCRIPT("mirror-due.html"));
+    await sleep(1200);
+    const duePinned = await pinPage(ui, "mirror-due.html");
     check("seconda tab in test", typeof duePinned === "number", String(duePinned));
     await evaluate(ui.client, `chrome.storage.sync.clear()`);
     await ui.client.send("Page.reload", { ignoreCache: true });
@@ -377,12 +388,48 @@ async function main() {
       )
     );
     check("injector: la scelta si applica", chosen.code === "GTM-PIXEL2" && chosen.push === true && chosen.toggle === true, JSON.stringify(chosen));
+
+    // Niente in pagina: il campo manuale compare e accetta un ID. La pagina prodotto non dichiara
+    // nessun container nel suo pixel, quindi è il banco giusto.
+    const vuoto = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-prodotti.html`);
+    opened.push(vuoto);
+    await sleep(1200);
+    await pinPage(ui, "mirror-prodotti.html");
+    await evaluate(ui.client, `chrome.storage.sync.clear()`);
+    await ui.client.send("Page.reload", { ignoreCache: true });
+    await sleep(1600);
+    const manual = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           if (document.getElementById("settings-view").classList.contains("is-hidden")) {
+             document.getElementById("settings-toggle").click();
+             await new Promise((r) => setTimeout(r, 300));
+           }
+           document.getElementById("injector-row").click();
+           await new Promise((r) => setTimeout(r, 400));
+           const select = document.getElementById("injector-container");
+           const field = document.getElementById("injector-manual");
+           const stateBefore = { selectHidden: select.classList.contains("is-hidden"), fieldShown: !field.classList.contains("is-hidden") };
+           field.value = "GTM-MANUAL1";
+           field.dispatchEvent(new Event("change"));
+           await new Promise((r) => setTimeout(r, 1300));
+           const st = await chrome.storage.sync.get(null);
+           return JSON.stringify({ ...stateBefore, code: st.gtmcode, push: st.gtmcodepush, domini: st.gtmDomains });
+         })()`
+      )
+    );
+    check("injector: senza container in pagina compare il campo manuale", manual.selectHidden === true && manual.fieldShown === true, JSON.stringify(manual));
+    check(
+      "injector: l'ID scritto a mano viene iniettato",
+      manual.code === "GTM-MANUAL1" && manual.push === true && JSON.stringify(manual.domini) === JSON.stringify(["127.0.0.1"]),
+      JSON.stringify(manual)
+    );
     await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
 
     // ---- 2. pagina prodotto: con scope solo-checkout non deve passare niente ----
-    const product = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-prodotti.html`);
-    opened.push(product);
-    const productTabId = await evaluate(ui.client, PIN_SCRIPT("mirror-prodotti.html"));
+    const product = vuoto;
+    const productTabId = await pinPage(ui, "mirror-prodotti.html");
     check("tab prodotto in test", typeof productTabId === "number", String(productTabId));
     await product.client.send("Page.reload", { ignoreCache: true });
     await sleep(5000);

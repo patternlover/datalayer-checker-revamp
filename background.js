@@ -196,7 +196,12 @@ chrome.runtime.onInstalled.addListener(() => {
   syncInjectorScripts();
   syncUiMode();
 });
-chrome.runtime.onStartup.addListener(() => syncInjectorScripts());
+chrome.runtime.onStartup.addListener(() => {
+  // Era un segno permanente in storage.local: un browser aggiornato che ripara il pannello restava
+  // segnato per sempre. Vale per la sessione, si riprova a ogni avvio.
+  chrome.storage.local.remove(SIDEPANEL_BROKEN_KEY).catch(() => {});
+  syncInjectorScripts();
+});
 
 // Aggiorna il banner solo nelle tab dei domini dell'injector (attuali o appena rimossi).
 async function injectBannerAllTabs(extraDomains) {
