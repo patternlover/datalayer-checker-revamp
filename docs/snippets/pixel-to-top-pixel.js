@@ -56,7 +56,11 @@
     window.dataLayer.forEach(handle);
     var push = window.dataLayer.push;
     window.dataLayer.push = function () {
-      for (var i = 0; i < arguments.length; i++) handle(arguments[i]);
+      // Il ponte non deve mai rompere i push del pixel: se qualcosa qui dentro va storto, il push
+      // originale parte comunque.
+      try {
+        for (var i = 0; i < arguments.length; i++) handle(arguments[i]);
+      } catch (e) {}
       return push.apply(window.dataLayer, arguments);
     };
   }, 100);
