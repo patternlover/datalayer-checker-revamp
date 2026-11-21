@@ -255,3 +255,23 @@ secondi di vita. Da qui le due sequenze che funzionano, e una che non funziona:
 Per non dipendere da questo, i due controlli che non passano da Tag Assistant: la tab **Top**
 dell'estensione (mostra i push rispecchiati) e la preview del **container server**, che su questo
 store riceve già gli hit (`sgtm.giuseppezanotti.com`).
+
+## Configurazione che funziona (2026-11-21)
+
+Misurata sul checkout di produzione, export di Tag Assistant alla mano:
+
+1. Tag Assistant Companion installata nel browser di debug (senza, il pannello non legge una tab
+   che non ha aperto lui: `__TAG_ASSISTANT_API` assente, misurato);
+2. `Testa <dominio>` nell'estensione, poi *Impostazioni* → **Prendi il container da questa pagina**
+   (legge `google_tag_manager` dalla pagina o dal frame del pixel e accende Injector, Tag Assistant
+   e ponte);
+3. Preview da GTM, poi carrello → checkout nella tab aperta da Tag Assistant.
+
+Risultato nell'export: **8 × `begin_checkout`** registrati dal container iniettato
+(`GTM-KWB3XWX4`), con i campi `ecommerce_item_id`/`ecommerce_item_name` risolti — cioè le variabili
+calcolate si popolano e si leggono in preview. Nessun `add_payment_info` e nessun `purchase`: non è
+stata simulata nessuna conversione.
+
+Il punto fragile non era il ponte: era la configurazione a mano. Nello storage del browser di prova
+`gtmcodepush` non era mai stato scritto, quindi per giorni nessuna prova ha avuto insieme injector,
+segnale di debug e ponte accesi.

@@ -21,7 +21,10 @@ Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
 ## Partire in 30 secondi
 
 1. Apri il sito in una tab normale, apri il popup, premi **Testa example.com**.
-2. Naviga: ogni push del `dataLayer` compare in tempo reale, con un separatore a ogni pagina.
+2. *Impostazioni* → **Prendi il container da questa pagina**: legge il container già presente, accende
+   Injector, Tag Assistant e ponte. È l'unico passo di configurazione: se ti serve il debug del
+   checkout, non c'è altro da compilare.
+3. Naviga: ogni push del `dataLayer` compare in tempo reale, con un separatore a ogni pagina.
 3. Senza un sito cliente: in `docs/demo/` c'è un finto negozio —
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
    Il finto checkout per il ponte è `http://localhost:8080/mirror.html` (iframe sandboxato su
