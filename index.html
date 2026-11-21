@@ -13,12 +13,12 @@
         <div id="target-bar" class="target">
           <span class="target-dot" aria-hidden="true"></span>
           <button id="target-host" class="target-host" type="button">Nessun sito in test</button>
+          <span id="injector-chip" class="status-dot is-hidden" role="status" aria-label="Stato del container iniettato"></span>
           <button id="target-unpin" class="target-unpin is-hidden" type="button" title="Chiudi la sessione: smetti di testare e azzera gli eventi raccolti" aria-label="Chiudi la sessione">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
         <div class="header-actions">
-          <span id="injector-chip" class="chip is-hidden" title="Stato GTM Injector">GTM Injector</span>
           <button id="settings-toggle" class="icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3" />
@@ -35,7 +35,6 @@
       <nav class="toolbar">
         <div class="tabs" role="tablist">
           <button class="tab-btn active" type="button" data-view="events" role="tab" aria-selected="true">Eventi</button>
-          <button class="tab-btn" type="button" data-view="hits" role="tab" aria-selected="false">Hit</button>
           <button class="tab-btn" type="button" data-view="uat" role="tab" aria-selected="false">UAT</button>
         </div>
         <div id="env-select" class="seg is-hidden" role="group" aria-label="Ambiente da visualizzare">
@@ -68,40 +67,6 @@
           <div id="detail-body" class="detail-body">
             <div id="empty-state" class="empty-state"></div>
             <div id="detail-json" class="json is-hidden"></div>
-          </div>
-        </section>
-      </main>
-
-      <main id="hits-view" class="view split-view is-hidden">
-        <aside class="events-sidebar">
-          <div class="search-wrap">
-            <input id="hits-search" class="search-input" type="search" placeholder="Cerca vendor, evento o valore" autocomplete="off" spellcheck="false" aria-label="Cerca fra le hit" />
-            <span id="hits-count" class="search-count is-hidden" title="Hit mostrate">0</span>
-            <button id="hits-search-clear" class="search-clear is-hidden" type="button" title="Pulisci ricerca" aria-label="Pulisci ricerca">✕</button>
-          </div>
-          <div id="vendor-chips" class="type-chips"></div>
-          <div id="hits-list" class="events-list"></div>
-        </aside>
-
-        <div id="hits-split" class="split" role="separator" tabindex="0" aria-label="Ridimensiona la lista hit" title="Trascina per ridimensionare"></div>
-
-        <section class="detail">
-          <div class="detail-head">
-            <div class="detail-title-wrap">
-              <span id="hit-vendor" class="vendor-badge"></span>
-              <span id="hit-name" class="detail-name">Nessuna hit</span>
-              <span id="hit-meta" class="detail-time"></span>
-            </div>
-            <a id="hit-docs" class="btn btn-quiet is-hidden" target="_blank" rel="noreferrer" title="Documentazione dei parametri del vendor">Docs</a>
-            <button id="hit-copy-curl" class="btn btn-quiet is-hidden" type="button" title="Copia il comando curl della richiesta">cURL</button>
-          </div>
-          <div id="hit-correlation" class="detail-hits is-hidden"></div>
-          <div class="detail-body">
-            <div id="hit-empty" class="empty-state"></div>
-            <div id="hit-detail" class="is-hidden">
-              <p id="hit-url" class="hit-url" role="button" tabindex="0" title="Clic per copiare l'URL"></p>
-              <div id="hit-fields" class="hit-fields"></div>
-            </div>
           </div>
         </section>
       </main>

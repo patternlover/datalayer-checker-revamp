@@ -28,7 +28,6 @@ Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
    Il finto checkout per il ponte è `http://localhost:8080/mirror.html` (iframe sandboxato su
    `/sandbox/modern/checkouts/…`), la pagina fuori scope è `mirror-prodotti.html`.
-4. Scheda **Hit**: le chiamate che partono (GA4, Meta, TikTok…) con i parametri decodificati.
 
 Per verificare il ponte senza toccare Chrome: `node test/e2e-mirror.mjs` (carica l'estensione in un
 profilo temporaneo, mette in test le due pagine demo e controlla cosa arriva nel `dataLayer` del
@@ -50,12 +49,6 @@ gli eventi raccolti.
   quel parametro sul quarto item, non solo chi contiene quella stringa.
 - **Top / Pixel** — il `dataLayer` dei Shopify Custom Pixel sta in un iframe e viene catturato in
   parallelo: il selettore (o `T` / `P`) cambia solo la vista, senza perdere dati.
-- **Hit dei vendor** — le chiamate di rete che partono dalla pagina, decodificate con i dizionari
-  dei parametri di Omnibug: GA4, Universal Analytics, GTM, Google Ads, Meta, TikTok, LinkedIn,
-  Pinterest, Snapchat, Reddit, Microsoft Ads, Criteo, Hotjar, Clarity. I parametri arrivano divisi
-  in gruppi (Generale, Eventi, E-commerce…): click sul nome per copiare il parametro grezzo, click
-  sul valore per copiare il valore, **cURL** per la richiesta intera col corpo POST. Le hit vicine a
-  un push mostrano `#n` e portano all'evento. Corpo POST compreso (TikTok manda JSON, non query string).
 - **DataLayer vecchi e UA** — funziona anche con i push di una volta: `dataLayer.push(arguments)`
   e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Message»,
   leggibili ma distinte dagli eventi di business).
@@ -76,12 +69,6 @@ gli eventi raccolti.
   pixel, i suoi tag partono due volte — un `purchase` risulterebbe doppio.
 - **Apertura** — **Popup** (default), **Pannello laterale** (solo Chrome), **Nuova tab**.
   L'interruttore è in *Impostazioni → Apertura*.
-- **Hit dei vendor** — le chiamate di rete che partono dalla pagina, decodificate con i dizionari
-  dei parametri di Omnibug: GA4, Universal Analytics, GTM, Google Ads, Meta, TikTok, LinkedIn,
-  Pinterest, Snapchat, Reddit, Microsoft Ads, Criteo, Hotjar, Clarity. I parametri arrivano divisi
-  in gruppi (Generale, Eventi, E-commerce…): click sul nome per copiare il parametro grezzo, click
-  sul valore per copiare il valore, **cURL** per la richiesta intera col corpo POST. Le hit vicine a
-  un push mostrano `#n` e portano all'evento. Corpo POST compreso (TikTok manda JSON, non query string).
 - **DataLayer vecchi e UA** — funziona anche con i push di una volta: `dataLayer.push(arguments)`
   e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Message»,
   leggibili ma distinte dagli eventi di business).
@@ -110,8 +97,7 @@ gli eventi raccolti.
 ## Da sapere
 
 - **Permessi** — `https://*/*` serve a leggere il `dataLayer` di qualunque sito stai testando
-  (Chrome lo chiede all'installazione); `scripting`, `webNavigation`, `webRequest` per la
-  cattura, in sola lettura; `storage`, `clipboardWrite`, `sidePanel` per il resto.
+  (Chrome lo chiede all'installazione); `scripting`, `webNavigation` per la cattura, in sola lettura; `storage`, `clipboardWrite`, `sidePanel` per il resto.
 - **Cosa esce dal browser** — eventi e sessioni restano in locale. Solo impostazioni, domini e
   snippet stanno in `chrome.storage.sync`, cioè nel tuo account Google: niente è condiviso.
 - **Se l'icona non apre più niente** — con *Apertura → Pannello laterale* su un browser che espone
@@ -122,8 +108,7 @@ gli eventi raccolti.
 ## Cosa non fa
 
 Non verifica una specifica (per quello c'è DataLayer Doctor: qui la specifica si spunta a mano
-nella scheda UAT) · non esporta file o HAR · non decodifica i vendor fuori dalla lista (Adobe,
-Tealium, Segment: aggiungerne uno è una riga in `lib/providers/index.js`) · non funziona su `http://`,
+nella scheda UAT) · non esporta file o HAR · non decodifica più le hit dei vendor (la scheda Hit è stata rimossa in 1.11.0) · non funziona su `http://`,
 tranne `localhost` · una sola tab in test alla volta · il ponte non copre gli app pixel (sandbox
 strict: girano in un worker e lì non c'è un `window.dataLayer` da agganciare) e non rende visibile
 in preview l'istanza del container che gira dentro il pixel, solo i suoi eventi.
@@ -133,7 +118,7 @@ in preview l'istanza del container che gira dentro il pixel, solo i suoi eventi.
 Derivata da **DataLayer Checker Plus** (Chrome Web Store): `lib/`, `ui/` e il container probe
 sono lavoro nostro, la storia parte dal tag `pre-revamp`.
 
-La decodifica delle hit riusa i dizionari dei parametri di
-[Omnibug](https://github.com/MisterPhilip/omnibug) (MIT, © 2017 Philip Lawrence): i file in
-`lib/providers/` sono copiati da là e trasformati in moduli ES, testo della licenza incluso. Il
-resto (cattura, correlazione con il dataLayer, interfaccia) è nostro.
+Fino alla 1.10.0 la decodifica delle hit riusava i dizionari dei parametri di
+[Omnibug](https://github.com/MisterPhilip/omnibug) (MIT, © 2017 Philip Lawrence). Con la 1.11.0
+quella parte è stata rimossa insieme alla scheda Hit: cattura, ponte verso il Top e interfaccia
+sono nostre.

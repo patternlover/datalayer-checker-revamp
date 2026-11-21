@@ -6,6 +6,7 @@ Le voci qui sotto stanno su una riga per frase: è il testo che finisce nelle re
 
 ## 1.11.0 — 2026-11-20
 
+- **Scheda Hit rimossa**: decodifica dei vendor, `lib/providers/`, la tabella delle hit nella sessione e i listener `webRequest` non ci sono più (`webRequest` sparisce anche dal manifest). Resta tutto il resto della cattura: il collector che gira nel contesto della pagina è stato rinominato `scripts/collector.js` (era `vendor.js`, nome che veniva dalle hit).
 - Se in pagina non c'è nessun container, la riga dell'Injector mostra un **campo manuale** (`GTM-XXXX`): si può iniettare anche un container che il sito non carica.
 - Pannello laterale: il segno "questo browser non lo apre" ora vale **per la sessione** (si azzera a ogni avvio, così un browser aggiornato lo riaccende) e la sezione *Apertura* lo dice, invece di aprire una tab in silenzio.
 - **Impostazioni a elenco, senza card**: tre righe (Apertura, GTM Injector, Rispecchia pixel sul Top), ognuna con il suo interruttore e un triangolino per le opzioni avanzate. Via le descrizioni lunghe, il blocco dei container, la diagnostica e il "torna al popup".

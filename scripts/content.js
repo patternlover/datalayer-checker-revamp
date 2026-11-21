@@ -100,14 +100,16 @@ self.Flatted = (function (n) {
   );
 })({});
 
-function injectVendor(callback) {
+// Il collector gira nel contesto della pagina (window.dataLayer non è raggiungibile dal content
+// script): si inietta come risorsa web-accessible e si toglie dal DOM appena caricato.
+function injectCollector(callback) {
   var node = document.head || document.getElementsByTagName("head")[0];
   var script = document.createElement("script");
   script.setAttribute("type", "text/javascript");
-  script.setAttribute("src", chrome.runtime.getURL("scripts/vendor.js"));
-  script.id = "dlc_vendor";
+  script.setAttribute("src", chrome.runtime.getURL("scripts/collector.js"));
+  script.id = "dlc_collector";
   script.onload = function () {
-    var el = document.getElementById("dlc_vendor");
+    var el = document.getElementById("dlc_collector");
     if (el) el.remove();
     callback();
   };
@@ -212,11 +214,13 @@ if (window.__dlcOnPageMessage) document.removeEventListener("__dlc_msg:main", wi
 window.__dlcOnPageMessage = onPageMessage;
 document.addEventListener("__dlc_msg:main", onPageMessage);
 
-if (window.__dlcVendorInjected) {
+if (window.__dlcPort) startStream();
+
+if (window.__dlcCollectorInjected) {
   if (window.__dlcPort) startStream();
 } else {
-  window.__dlcVendorInjected = true;
-  injectVendor(function () {
+  window.__dlcCollectorInjected = true;
+  injectCollector(function () {
     if (window.__dlcPort) startStream();
   });
 }

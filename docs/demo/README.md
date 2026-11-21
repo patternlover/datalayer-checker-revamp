@@ -1,6 +1,6 @@
 # Pagina demo
 
-Un finto negozio con un `dataLayer` vero e hit finte verso GA4 e Meta. Serve a provare
+Un finto negozio con un `dataLayer` vero. Serve a provare
 l'estensione (e a rifare gli screenshot in `docs/screenshots/`) senza toccare un sito di un
 cliente.
 
@@ -31,7 +31,5 @@ Su Windows senza Python: `npx serve . -l 8080`.
 - `index.html` — la pagina: eventi `gtm.js`, `page_view`, `view_item` al caricamento;
   `add_to_cart` e `dl_view_cart` al click; tre pulsanti per i casi che rompono i dataLayer veri
   (svuotamento dell'array, svuotamento con ciclo nuovo più lungo, navigazione SPA).
-- Le hit sono `new Image().src` verso `google-analytics.com/g/collect` e `facebook.com/tr`: non
-  servono token né account, devono solo *partire* perché l'estensione le osservi. Nella scheda
   **Hit** devono comparire due righe decodificate (`add_to_cart` con `tid=G-DEMO123`, `AddToCart`
   con l'ID della pagina), ciascuna collegata al proprio evento del dataLayer con `#n`.

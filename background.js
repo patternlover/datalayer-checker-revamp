@@ -1,7 +1,6 @@
 import * as store from "./lib/session-store.js";
 import Flatted from "./lib/flatted.js";
-import { VENDOR_URL_FILTERS, decodeHit, extractContainerIdsFromUrl, extractContainerIdsFromCode } from "./lib/vendors.js";
-import { correlateNewEvents, correlateNewHit } from "./lib/correlation.js";
+import { extractContainerIdsFromCode } from "./lib/vendors.js";
 import { getTarget, setTarget, hostOf } from "./lib/target.js";
 import * as collector from "./lib/collect.js";
 
@@ -627,9 +626,7 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
   const startIndex = typeof parsed.startIndex === "number" ? parsed.startIndex : 0;
   const now = Date.now();
   // Un timestamp per posizione, crescente: nello snapshot l'ora vera dei push storici non
-  // esiste, ma con un solo Date.now() per tutti gli eventi la lista mostra orari identici e
-  // correlateNewHit non ha modo di scegliere il vicino giusto (a parita' di distanza vince
-  // il primo dell'array, cioe' gtm.js).
+  // esiste, e con un solo Date.now() per tutti gli eventi la lista mostrerebbe orari identici.
   const count = parsed.dlData.length;
   const entries = parsed.dlData.map((data, k) => ({
     ts: count > 1 ? now - (count - 1 - k) : now,
@@ -648,144 +645,15 @@ async function handleCaptureMessage(tabId, frameId, frame, frameUrl, msg) {
   else result = await store.appendEvents(tabId, entries);
 
   const updated = await store.get(tabId);
-  const linkedHits = [];
-  if (updated) {
-    correlateNewEvents(updated, result.entries);
-    const hitIds = new Set();
-    result.entries.forEach((entry) => (entry.hits || []).forEach((id) => hitIds.add(id)));
-    if (hitIds.size) {
-      updated.hits.forEach((hit) => {
-        if (hitIds.has(hit.id)) linkedHits.push(hit);
-      });
-    }
-    await store.save(tabId);
-  }
+  if (updated) await store.save(tabId);
   collectFor(tabId, result.entries);
 
   if (navChanged || result.trimmed > 0 || result.removed > 0) {
     broadcast(tabId, { type: "session", session: await store.get(tabId) });
   } else {
-    broadcast(tabId, { type: "append", entries: result.entries, hits: linkedHits, gtmInjected: parsed.gtmInjected === true });
+    broadcast(tabId, { type: "append", entries: result.entries, gtmInjected: parsed.gtmInjected === true });
   }
 }
-
-// ---------- Hit inspector (webRequest, observe only) ----------
-// Corpo della richiesta come lo dà webRequest: i provider di Omnibug sanno leggere una stringa
-// (JSON o form-urlencoded) e un oggetto. Si tiene una copia troncata: serve al «Copia cURL».
-const MAX_POST_CHARS = 2048;
-
-function postDataOf(body) {
-  if (!body) return "";
-  let text = "";
-  if (body.formData) {
-    const flat = {};
-    Object.keys(body.formData).forEach((key) => {
-      flat[key] = (body.formData[key] || []).join(",");
-    });
-    text = JSON.stringify(flat);
-  } else if (Array.isArray(body.raw) && body.raw.length) {
-    try {
-      text = body.raw.map((part) => (part && part.bytes ? new TextDecoder("utf-8").decode(part.bytes) : "")).join("");
-    } catch (error) {
-      return "";
-    }
-  }
-  return text.slice(0, MAX_POST_CHARS);
-}
-
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    if (details.tabId == null || details.tabId < 0) return;
-    serial(details.tabId, () => handleHit(details));
-  },
-  { urls: VENDOR_URL_FILTERS },
-  ["requestBody"]
-);
-
-async function handleHit(details) {
-  {
-    const session = await store.get(details.tabId);
-    if (!session || !session.active) return;
-
-    const postBody = postDataOf(details.requestBody);
-    // I container in pagina si leggono dall'URL (gtm.js e gtag/js) prima di decidere se la
-    // richiesta è una hit: gtag/js non è una hit per nessun provider, ma è il container GA4.
-    const containerIds = extractContainerIdsFromUrl(details.url);
-    if (containerIds.length) await store.mergePageContainers(details.tabId, containerIds);
-
-    // Nessun provider riconosce l'URL: la richiesta non è una hit, non va salvata.
-    const decoded = decodeHit(details.url, postBody);
-    if (!decoded) {
-      if (containerIds.length) broadcast(details.tabId, { type: "session", session: await store.get(details.tabId) });
-      return;
-    }
-
-    const hit = {
-      ts: Date.now(),
-      navId: session.navId,
-      frameId: details.frameId || 0,
-      frame: frameKindFromDetails(details),
-      url: details.url,
-      method: details.method || "GET",
-      status: "pending",
-      requestId: details.requestId,
-      vendor: decoded.vendor,
-      vendorLabel: decoded.vendorLabel,
-      docs: decoded.docs,
-      account: decoded.account,
-      requestType: decoded.requestType,
-      eventName: decoded.eventName,
-      path: decoded.path,
-      groups: decoded.groups,
-      fields: decoded.fields,
-      postBody: postBody,
-      eventIndex: null,
-    };
-    const { hit: storedHit, trimmed } = await store.appendHit(details.tabId, hit);
-    if (!storedHit) return;
-
-    const updated = await store.get(details.tabId);
-    let linkedEntry = null;
-    if (updated) {
-      correlateNewHit(updated, storedHit);
-      if (storedHit.eventIndex) {
-        linkedEntry = updated.events.find((entry) => entry.i === storedHit.eventIndex) || null;
-      }
-      await store.save(details.tabId);
-    }
-
-    if (trimmed > 0 || containerIds.length) {
-      broadcast(details.tabId, { type: "session", session: await store.get(details.tabId) });
-    } else {
-      if (linkedEntry) broadcast(details.tabId, { type: "event-update", entries: [linkedEntry] });
-      broadcast(details.tabId, { type: "hits", hits: [storedHit] });
-    }
-  }
-}
-
-chrome.webRequest.onHeadersReceived.addListener(
-  (details) => {
-    if (details.tabId == null || details.tabId < 0) return;
-    serial(details.tabId, async () => {
-      const hit = await store.updateHitStatus(details.tabId, details.requestId, details.statusCode);
-      if (hit) broadcast(details.tabId, { type: "hit-update", requestId: hit.requestId, status: hit.status });
-    });
-  },
-  { urls: VENDOR_URL_FILTERS },
-  []
-);
-
-chrome.webRequest.onErrorOccurred.addListener(
-  (details) => {
-    if (details.tabId == null || details.tabId < 0) return;
-    serial(details.tabId, async () => {
-      const hit = await store.updateHitStatus(details.tabId, details.requestId, "error");
-      if (hit) broadcast(details.tabId, { type: "hit-update", requestId: hit.requestId, status: hit.status, error: details.error || "" });
-    });
-  },
-  { urls: VENDOR_URL_FILTERS },
-  []
-);
 
 // ---------- Navigation ----------
 // Il separatore di navigazione per il frame principale viene creato quando arriva lo snapshot

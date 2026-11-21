@@ -141,21 +141,22 @@ export async function injectIntoActiveTab() {
     .catch(() => {});
 }
 
-export function updateChip(chipEl) {
-  if (!chipEl) return;
+export function updateChip(dotEl) {
+  if (!dotEl) return;
   const on = injector.on;
   const inDomain = on && hostMatches(state.tabHost, injector.domains);
-  chipEl.classList.remove("chip-on", "chip-off", "chip-warn");
-  chipEl.classList.toggle("is-hidden", !on);
+  dotEl.classList.remove("chip-on", "chip-off", "chip-warn");
+  dotEl.classList.toggle("is-hidden", !on);
   if (!on) return;
   if (!inDomain) {
-    chipEl.textContent = "Injector · fuori dominio";
-    chipEl.classList.add("chip-warn");
-    chipEl.title = "Attivo su: " + injector.domains.join(", ");
+    dotEl.classList.add("chip-warn");
+    dotEl.title = "Injector acceso ma fuori dominio · attivo su " + injector.domains.join(", ");
     return;
   }
   const injected = !!(state.session && state.session.gtmInjected);
-  chipEl.textContent = injected ? "Injector ✓" : "Injector";
-  chipEl.classList.add(injected ? "chip-on" : "chip-warn");
-  chipEl.title = injector.container ? "Container " + injector.container : "";
+  dotEl.classList.add(injected ? "chip-on" : "chip-warn");
+  dotEl.title = injected
+    ? "Container iniettato" + (injector.container ? ": " + injector.container : "")
+    : "Injector acceso, container non ancora in pagina";
 }
+
