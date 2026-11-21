@@ -21,11 +21,13 @@ import * as events from "./events.js";
 import * as hits from "./hits.js";
 import * as collect from "./collect.js";
 import * as settings from "./settings.js";
+import * as diag from "./diag.js";
 
 let eventsView;
 let hitsView;
 let collectView;
 let settingsView;
+let diagView;
 let currentView = "events";
 let toastTimer;
 let unpinTimer = null;
@@ -87,6 +89,7 @@ async function boot() {
   hitsView = hits.init(ctx);
   collectView = collect.init(ctx);
   settingsView = settings.init(ctx);
+  diagView = diag.init(ctx);
 
   onPinResult((result) => {
     if (result.ok) toast("Tab in test: " + (state.target ? state.target.host : ""));
@@ -304,6 +307,7 @@ function renderAll() {
   else if (currentView === "hits" && hitsView) hitsView.render();
   else if (currentView === "uat" && collectView) collectView.render();
   else if (currentView === "settings" && settingsView) settingsView.render();
+  if (currentView === "settings" && diagView) diagView.refresh();
 }
 
 function toast(message) {

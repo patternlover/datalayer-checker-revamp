@@ -1609,3 +1609,19 @@ html.is-popup .app {
     color: var(--muted);
     font-size: 12px;
 }
+
+/* Diagnostica: testo monospaziato, leggibile ma compatto. */
+.diag-output {
+    margin: 0;
+    padding: 10px;
+    border-radius: var(--r-sm);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow: auto;
+}

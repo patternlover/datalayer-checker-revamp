@@ -78,6 +78,7 @@ gli eventi raccolti.
   container nel Top (campo Injector acceso): senza, la preview non ha a cosa agganciarsi e resta
   vuota. Se quel container gira **anche** nel pixel, i suoi tag scattano una seconda volta:
   l'estensione lo dice, non lo impedisce.
+- **Stato della pagina** — *Impostazioni* → **Leggi la pagina**: container presenti, se l'Injector ha iniettato, se il container è in debug, se il canale di Tag Assistant c'è, eventi di checkout e sandbox del pixel. Da qui in poi il primo posto dove guardare.
 - **Apertura** — default **popup** agganciato all'icona; da *Impostazioni → Apertura* si passa a
   finestra separata (debug lunghi) o pannello laterale (solo su Chrome).
 

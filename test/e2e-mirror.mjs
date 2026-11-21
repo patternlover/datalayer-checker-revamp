@@ -307,6 +307,19 @@ async function main() {
     );
     check("injector: attivato dalla UI", injectorState.on === true, injectorState);
     check("injector: lo snippet arriva in pagina", injected.injected === true, JSON.stringify(injected));
+    // La diagnostica deve raccontare la pagina: è quello che useremo quando qualcosa non si vede.
+    const diagOut = await evaluate(
+      ui.client,
+      `(async () => {
+         document.getElementById("diag-run").click();
+         await new Promise((r) => setTimeout(r, 900));
+         return document.getElementById("diag-output").textContent;
+       })()`
+    );
+    check("diagnostica: legge la pagina in test", /container\s+GTM-|nessuno in pagina/.test(diagOut), String(diagOut).split("\n")[3] || "");
+    check("diagnostica: dice se l'injector ha girato", /injector\s+(ha iniettato|non ha iniettato)/.test(diagOut));
+    check("diagnostica: dice se il canale di Tag Assistant c'è", /canale TA\s+(API della companion presente|API assente)/.test(diagOut));
+
     check(
       "injector: container in debug per Tag Assistant",
       typeof injected.ta === "string" && Math.abs(Date.now() - Number(injected.ta)) < 300000,
