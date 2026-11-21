@@ -21,16 +21,14 @@ const uiPorts = new Set();
 // cliccando altrove). In alternativa finestra separata persistente (funziona ovunque, anche su
 // Arc che non supporta il side panel) o pannello laterale (solo Chrome).
 const UI_MODE_KEY = "dlcUiMode"; // "popup" | "window" | "sidepanel"
-const UI_WIN_KEY = "dlcUiWindow"; // { id } in storage.session
-const UI_BOUNDS_KEY = "dlcUiBounds"; // { left, top, width, height } in storage.local
 const SIDEPANEL_BROKEN_KEY = "dlcSidePanelBroken"; // true = qui il pannello laterale non si apre
 const UI_POPUP_URL = "index.html?popup=1";
 
 async function uiMode() {
   const stored = await chrome.storage.local.get(UI_MODE_KEY);
   const mode = stored[UI_MODE_KEY];
-  if (mode === "window") return "window";
   if (mode === "sidepanel" && chrome.sidePanel) return "sidepanel";
+  if (mode === "tab" || mode === "window") return "tab";
   return "popup";
 }
 
@@ -68,15 +66,10 @@ async function findUiTab() {
   return null;
 }
 
-function saneBounds(b) {
-  if (!b) return null;
-  const ok = [b.left, b.top, b.width, b.height].every((v) => Number.isFinite(v));
-  if (!ok || b.width < 320 || b.height < 360 || b.left < -200 || b.top < -200 || b.left > 6000 || b.top > 4000) return null;
-  return { left: b.left, top: b.top, width: b.width, height: b.height };
-}
-
-async function openUiWindow() {
-  // 1. UI già aperta (finestra o scheda): la si porta in primo piano.
+// Apertura in una tab: se la UI è già aperta la si porta davanti, altrimenti se ne crea una.
+// Niente finestre separate: sono un'altra cosa da gestire, e il pannello laterale copre il caso
+// "accanto alla pagina".
+async function openUiTab() {
   const existing = await findUiTab();
   if (existing) {
     try {
@@ -85,24 +78,7 @@ async function openUiWindow() {
       return;
     } catch (error) {}
   }
-  // 2. Nuova finestra separata (posizione/dimensioni ricordate solo se plausibili).
-  const { [UI_BOUNDS_KEY]: stored } = await chrome.storage.local.get(UI_BOUNDS_KEY);
-  const opts = { url: UI_URL, type: "popup", width: 460, height: 860, focused: true };
-  const bounds = saneBounds(stored);
-  if (bounds) Object.assign(opts, bounds);
-  try {
-    const win = await chrome.windows.create(opts);
-    await chrome.storage.session.set({ [UI_WIN_KEY]: { id: win.id } });
-    return;
-  } catch (error) {}
-  try {
-    // Posizione salvata non valida per questo schermo: riprova senza.
-    const win = await chrome.windows.create({ url: UI_URL, type: "popup", width: 460, height: 860, focused: true });
-    await chrome.storage.session.set({ [UI_WIN_KEY]: { id: win.id } });
-    return;
-  } catch (error) {}
-  // 3. Ultima risorsa: UI in una scheda normale.
-  await chrome.tabs.create({ url: UI_URL }).catch(() => {});
+  await chrome.tabs.create({ url: UI_URL, active: true }).catch(() => {});
 }
 
 // Il pannello laterale si apre e poi si VERIFICA: l'API c'è anche dove il pannello non esiste
@@ -170,7 +146,7 @@ async function trySidePanel(tab) {
 async function openFromAction(tab) {
   const mode = await uiMode();
   if (mode === "sidepanel" && (await trySidePanel(tab))) return;
-  await openUiWindow();
+  await openUiTab();
 }
 
 // Arriva solo quando il popup è tolto, cioè nelle modalità finestra e pannello laterale.
@@ -178,42 +154,8 @@ chrome.action.onClicked.addListener((tab) => {
   openFromAction(tab);
 });
 // Usato dai test automatici (non si può cliccare l'icona della toolbar da Playwright).
-globalThis.__dlcOpenUi = openUiWindow;
+globalThis.__dlcOpenUi = openUiTab;
 globalThis.__dlcOpenFromAction = openFromAction;
-
-// Ricorda posizione e dimensioni della finestra.
-if (chrome.windows.onBoundsChanged) {
-  chrome.windows.onBoundsChanged.addListener(async (win) => {
-    const { [UI_WIN_KEY]: saved } = await chrome.storage.session.get(UI_WIN_KEY);
-    if (!saved || saved.id !== win.id || win.type !== "popup") return;
-    if (!saneBounds(win)) return;
-    await chrome.storage.local.set({ [UI_BOUNDS_KEY]: { left: win.left, top: win.top, width: win.width, height: win.height } });
-  });
-}
-chrome.windows.onRemoved.addListener(async (windowId) => {
-  const { [UI_WIN_KEY]: saved } = await chrome.storage.session.get(UI_WIN_KEY);
-  if (saved && saved.id === windowId) await chrome.storage.session.remove(UI_WIN_KEY);
-});
-
-// Allineamento all'avvio del service worker: solo la tab in test può avere una cattura attiva
-// (le versioni precedenti avviavano il debug su qualunque tab in cui si apriva il popup).
-(async () => {
-  const target = await getTarget();
-  for (const session of await store.list()) {
-    if (session.active && (!target || String(target.tabId) !== String(session.tabId))) {
-      await store.setActive(session.tabId, false);
-    }
-  }
-})().catch(() => {});
-
-// Dopo un riavvio del browser i tabId cambiano: si conserva solo l'host da riagganciare.
-chrome.runtime.onStartup.addListener(async () => {
-  syncUiMode();
-  // Un browser aggiornato può aver guadagnato il pannello laterale: si riprova.
-  await chrome.storage.local.remove(SIDEPANEL_BROKEN_KEY).catch(() => {});
-  const target = await getTarget();
-  if (target && target.tabId != null) await setTarget({ ...target, tabId: null, orphanTabId: null });
-});
 
 // ---------- Content scripts (injector + banner) ----------
 // Script del GTM Injector: registrati SOLO quando l'injector è acceso e SOLO sui domini scelti,

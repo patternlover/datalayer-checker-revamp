@@ -221,19 +221,26 @@ async function main() {
     check("impostazioni: sezione del ponte presente", settingsUi.viewVisible && settingsUi.hasToggle, JSON.stringify(settingsUi));
     check("impostazioni: il toggle scrive in storage", settingsUi.after === true, String(settingsUi.after));
     check("impostazioni: scope di default solo-checkout", settingsUi.scope === "solo-checkout", settingsUi.scope);
-    const noteNoInjector = await evaluate(
-      ui.client,
-      `(async () => {
-         await chrome.storage.sync.set({ pixelmirror: true, gtmcodepush: false });
-         await new Promise((r) => setTimeout(r, 300));
-         document.getElementById("mirror-toggle").click();
-         await new Promise((r) => setTimeout(r, 300));
-         const note = document.getElementById("mirror-note");
-         const hidden = note.classList.contains("is-hidden");
-         return hidden ? "" : note.textContent;
-       })()`
+    // Apertura: tre modalità, nessun "torna al popup".
+    const modes = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           const radios = [...document.querySelectorAll('input[name="uimode"]')].map((r) => r.value);
+           const value = document.getElementById("uimode-value").textContent.trim();
+           const reset = !!document.getElementById("uimode-reset");
+           const tab = document.querySelector('input[name="uimode"][value="tab"]');
+           if (tab) { tab.checked = true; tab.dispatchEvent(new Event("change")); }
+           await new Promise((r) => setTimeout(r, 400));
+           const stored = await chrome.storage.local.get(["dlcUiMode"]);
+           return JSON.stringify({ radios, value, reset, stored: stored.dlcUiMode });
+         })()`
+      )
     );
-    check("impostazioni: senza Injector l'avviso lo dice", /Injector/.test(noteNoInjector), String(noteNoInjector).slice(0, 80));
+    check("impostazioni: popup, pannello laterale, nuova tab", modes.radios.includes("popup") && modes.radios.includes("sidepanel") && modes.radios.includes("tab"), JSON.stringify(modes.radios));
+    check("impostazioni: niente più «torna al popup»", modes.reset === false);
+    check("impostazioni: la modalità scelta si salva", modes.stored === "tab", String(modes.stored));
+    await evaluate(ui.client, `chrome.storage.local.set({ dlcUiMode: "popup" })`);
 
     await evaluate(ui.client, `chrome.storage.sync.set({ pixelmirror: true, pixelmirrorScope: "solo-checkout" })`);
 
@@ -267,164 +274,110 @@ async function main() {
     const pixelEvents = session && Array.isArray(session.events) ? session.events.filter((e) => e.frame === "pixel").length : 0;
     check("la tab Pixel continua a raccogliere", pixelEvents > 0 && session.pixelSeen === true, `eventi pixel: ${pixelEvents}, pixelSeen: ${session.pixelSeen}`);
 
-    // ---- 1b. Injector: il container iniettato deve entrare in debug (attributo su <html>) ----
-    // gtm.js si dichiara in debug solo con uno di quattro segnali (sorgente di gtm.js); sul
-    // checkout l'unico che possiamo dargli è `data-tag-assistant-prod-present`. Snippet finto:
-    // qui interessa che il codice arrivi in pagina e che l'attributo ci sia.
-    const CODE = "window.__injected = 1; /* googletagmanager.com/gtm.js?id=GTM-KWB3XWX4 */";
-    const setInjector = (ta, code) => {
-      const snippet = code || CODE;
-      return evaluate(
-        ui.client,
-        `(async () => {
-           await chrome.storage.sync.set({ injectorTA: ${ta}, gtmcode: ${JSON.stringify(snippet)}, gtmDomains: ["127.0.0.1"] });
-           document.getElementById("gtm-domains").value = "127.0.0.1";
-           document.getElementById("gtm-code").value = ${JSON.stringify(snippet)};
-           const toggle = document.getElementById("injector-toggle");
-           if (toggle.checked) { toggle.checked = false; toggle.dispatchEvent(new Event("change")); }
-           await new Promise((r) => setTimeout(r, 300));
-           toggle.checked = true;
-           toggle.dispatchEvent(new Event("change"));
-           await new Promise((r) => setTimeout(r, 1000));
-           return JSON.stringify({ on: toggle.checked, reason: (await chrome.storage.sync.get(["gtmcodepush"])).gtmcodepush });
-         })()`
-      );
-    };
-
-    // La UI legge la tab in test all'avvio: dopo il pin va ricaricata, altrimenti injectIntoActiveTab
-    // lavora con tabId nullo (è quello che succede a chi apre il popup dopo aver pinnato).
+    // ---- 1b. Injector: il container si legge dalla pagina, non si scrive ----
+    // Stato pulito come un'installazione nuova.
+    await evaluate(ui.client, `chrome.storage.sync.clear()`);
     await ui.client.send("Page.reload", { ignoreCache: true });
-    await sleep(1500);
-    const injectorState = JSON.parse(await setInjector(true));
-    const injected = JSON.parse(
-      await evaluate(
-        checkout.client,
-        `JSON.stringify({
-           injected: window.__injected === 1,
-           ta: document.documentElement.getAttribute("data-tag-assistant-prod-present"),
-         })`
-      )
-    );
-    check("injector: attivato dalla UI", injectorState.on === true, injectorState);
-    check("injector: lo snippet arriva in pagina", injected.injected === true, JSON.stringify(injected));
-    // La diagnostica deve raccontare la pagina: è quello che useremo quando qualcosa non si vede.
-    const diagOut = await evaluate(
-      ui.client,
-      `(async () => {
-         document.getElementById("diag-run").click();
-         await new Promise((r) => setTimeout(r, 900));
-         return document.getElementById("diag-output").textContent;
-       })()`
-    );
-    check("diagnostica: legge la pagina in test", /container\s+GTM-|nessuno in pagina/.test(diagOut), String(diagOut).split("\n")[3] || "");
-    check("diagnostica: dice se l'injector ha girato", /injector\s+(ha iniettato|non ha iniettato)/.test(diagOut));
-    check("diagnostica: dice se il canale di Tag Assistant c'è", /canale TA\s+(API della companion presente|API assente)/.test(diagOut));
+    await sleep(1600);
 
-    check(
-      "injector: container in debug per Tag Assistant",
-      typeof injected.ta === "string" && Math.abs(Date.now() - Number(injected.ta)) < 300000,
-      String(injected.ta)
-    );
-
-    await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2500);
-    await setInjector(false);
-    const noTa = JSON.parse(
-      await evaluate(
-        checkout.client,
-        `JSON.stringify({
-           injected: window.__injected === 1,
-           ta: document.documentElement.getAttribute("data-tag-assistant-prod-present"),
-         })`
-      )
-    );
-    check("injector: senza l'opzione nessun segnale di debug", noTa.injected === true && noTa.ta === null, JSON.stringify(noTa));
-
-    // Le due forme che in pagina reale arrivavano vuote: <script async src="…gtm.js?id=…"> e il solo
-    // ID del container. Con i tag spogliati il loader spariva e non si iniettava niente.
-    await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2500);
-    await setInjector(true, '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-TEST123"></script>');
-    const srcDiag = JSON.parse(
-      await evaluate(
-        checkout.client,
-        `JSON.stringify({
-           loader: !!document.querySelector('script[src*="gtm.js?id=GTM-TEST123"]'),
-           injectedCode: typeof window.__dlcGtmInjectedCode === "string" ? window.__dlcGtmInjectedCode.slice(0, 60) : null,
-         })`
-      )
-    );
-    check("injector: snippet con <script src> non perde il loader", srcDiag.loader === true, JSON.stringify(srcDiag));
-
-    await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2500);
-    await setInjector(true, "GTM-TEST456");
-    const idSnippet = JSON.parse(
-      await evaluate(
-        checkout.client,
-        `JSON.stringify({
-           loader: !!document.querySelector('script[src*="gtm.js?id=GTM-TEST456"]'),
-           gtmStart: (window.dataLayer || []).some((e) => e && e.event === "gtm.js"),
-         })`
-      )
-    );
-    check("injector: basta l'ID del container", idSnippet.loader === true && idSnippet.gtmStart === true, JSON.stringify(idSnippet));
-
-    // Un valore che non è né uno snippet né un ID non deve finire in pagina come script, e la card
-    // deve dire il perché (era il caso che l'altra sessione aveva intercettato: ReferenceError muto).
-    await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2500);
-    await setInjector(true, "questo non e uno snippet");
-    const invalidCard = JSON.parse(
+    const fresh = JSON.parse(
       await evaluate(
         ui.client,
         `(async () => {
            if (document.getElementById("settings-view").classList.contains("is-hidden")) {
              document.getElementById("settings-toggle").click();
-             await new Promise((r) => setTimeout(r, 400));
+             await new Promise((r) => setTimeout(r, 300));
            }
-           await new Promise((r) => setTimeout(r, 700));
-           const note = document.getElementById("injector-invalid");
-           return JSON.stringify({ hidden: note.classList.contains("is-hidden"), text: note.textContent });
+           return JSON.stringify({
+             injector: document.getElementById("injector-toggle").checked,
+             ta: document.getElementById("injector-ta").checked,
+             mirror: document.getElementById("mirror-toggle").checked,
+           });
          })()`
       )
     );
-    const notInjected = await evaluate(checkout.client, "typeof window.__dlcGtmInjectedCode");
-    check(
-      "injector: un valore non-snippet non inietta e la card lo dice",
-      notInjected === "undefined" && !invalidCard.hidden && /snippet|ID/i.test(invalidCard.text),
-      JSON.stringify({ notInjected, invalidCard })
-    );
-    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
+    check("injector: spento su installazione nuova", fresh.injector === false);
+    check("injector: Collega a Tag Assistant è attivo di base", fresh.ta === true);
 
-    // Un click al posto di quattro campi e tre interruttori: il container si legge dalla pagina.
-    await checkout.client.send("Page.reload", { ignoreCache: true });
-    await sleep(2500);
-    await evaluate(
-      checkout.client,
-      `window.google_tag_manager = Object.assign({}, window.google_tag_manager || {}, { "GTM-AUTOCFG1": {} })`
-    );
-    const autoconfig = JSON.parse(
+    const autoPick = JSON.parse(
       await evaluate(
         ui.client,
         `(async () => {
-           await chrome.storage.sync.set({ gtmcodepush: false, injectorTA: false, pixelmirror: false, gtmcode: "", gtmDomains: [] });
-           await new Promise((r) => setTimeout(r, 300));
-           document.getElementById("injector-autoconfig").click();
-           await new Promise((r) => setTimeout(r, 1200));
+           const toggle = document.getElementById("injector-toggle");
+           toggle.checked = true;
+           toggle.dispatchEvent(new Event("change"));
+           await new Promise((r) => setTimeout(r, 1400));
            const st = await chrome.storage.sync.get(null);
-           return JSON.stringify({ code: st.gtmcode, push: st.gtmcodepush, ta: st.injectorTA, mirror: st.pixelmirror, scope: st.pixelmirrorScope, domini: st.gtmDomains });
+           return JSON.stringify({ on: toggle.checked, code: st.gtmcode, push: st.gtmcodepush, domini: st.gtmDomains });
          })()`
       )
     );
-    check("autoconfig: legge il container dalla pagina", autoconfig.code === "GTM-AUTOCFG1", JSON.stringify(autoconfig));
-    check(
-      "autoconfig: accende injector, Tag Assistant e ponte",
-      autoconfig.push === true && autoconfig.ta === true && autoconfig.mirror === true && autoconfig.scope === "solo-checkout"
-    );
-    check("autoconfig: prende il dominio dalla tab", JSON.stringify(autoconfig.domini) === JSON.stringify(["127.0.0.1"]), JSON.stringify(autoconfig.domini));
-    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
+    check("injector: prende il container dalla pagina", autoPick.code === "GTM-PIXEL1" && autoPick.push === true, JSON.stringify(autoPick));
+    check("injector: dominio dalla tab, non digitato", JSON.stringify(autoPick.domini) === JSON.stringify(["127.0.0.1"]), JSON.stringify(autoPick.domini));
 
+    const injected = JSON.parse(
+      await evaluate(
+        checkout.client,
+        `JSON.stringify({
+           injected: !!window.__dlcGtmInjectedCode,
+           ta: document.documentElement.getAttribute("data-tag-assistant-prod-present"),
+         })`
+      )
+    );
+    check("injector: il container arriva in pagina", injected.injected === true, JSON.stringify(injected));
+    check(
+      "injector: il container è in debug per Tag Assistant",
+      typeof injected.ta === "string" && Math.abs(Date.now() - Number(injected.ta)) < 300000,
+      String(injected.ta)
+    );
+
+    // Più container in pagina: si sceglie, e finché non si sceglie resta spento.
+    const due = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-due.html`);
+    opened.push(due);
+    const duePinned = await evaluate(ui.client, PIN_SCRIPT("mirror-due.html"));
+    check("seconda tab in test", typeof duePinned === "number", String(duePinned));
+    await evaluate(ui.client, `chrome.storage.sync.clear()`);
+    await ui.client.send("Page.reload", { ignoreCache: true });
+    await sleep(1600);
+    const choose = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           if (document.getElementById("settings-view").classList.contains("is-hidden")) {
+             document.getElementById("settings-toggle").click();
+             await new Promise((r) => setTimeout(r, 300));
+           }
+           const toggle = document.getElementById("injector-toggle");
+           toggle.checked = true;
+           toggle.dispatchEvent(new Event("change"));
+           await new Promise((r) => setTimeout(r, 1500));
+           const sel = document.getElementById("injector-container");
+           return JSON.stringify({
+             on: toggle.checked,
+             opzioni: [...sel.options].map((o) => o.value),
+             bodyOpen: !document.getElementById("injector-body").hidden,
+           });
+         })()`
+      )
+    );
+    check("injector: con più container chiede quale", choose.opzioni.length >= 2 && choose.bodyOpen === true, JSON.stringify(choose));
+    check("injector: senza scelta resta spento", choose.on === false, String(choose.on));
+
+    const chosen = JSON.parse(
+      await evaluate(
+        ui.client,
+        `(async () => {
+           const sel = document.getElementById("injector-container");
+           sel.value = "GTM-PIXEL2";
+           sel.dispatchEvent(new Event("change"));
+           await new Promise((r) => setTimeout(r, 1300));
+           const st = await chrome.storage.sync.get(null);
+           return JSON.stringify({ code: st.gtmcode, push: st.gtmcodepush, toggle: document.getElementById("injector-toggle").checked });
+         })()`
+      )
+    );
+    check("injector: la scelta si applica", chosen.code === "GTM-PIXEL2" && chosen.push === true && chosen.toggle === true, JSON.stringify(chosen));
+    await evaluate(ui.client, `chrome.storage.sync.set({ gtmcodepush: false })`);
 
     // ---- 2. pagina prodotto: con scope solo-checkout non deve passare niente ----
     const product = await openPage(browserClient, `http://127.0.0.1:${PORT}/mirror-prodotti.html`);
@@ -437,7 +390,7 @@ async function main() {
     check("fuori scope non rispecchia", productTop.length === 0, JSON.stringify(productTop.map((e) => e.event)));
 
     // ---- 3. con scope "sempre" invece rispecchia ----
-    await evaluate(ui.client, `chrome.storage.sync.set({ pixelmirrorScope: "sempre" })`);
+    await evaluate(ui.client, `chrome.storage.sync.set({ pixelmirror: true, pixelmirrorScope: "sempre" })`);
     await sleep(1500);
     await product.client.send("Page.reload", { ignoreCache: true });
     await sleep(4500);

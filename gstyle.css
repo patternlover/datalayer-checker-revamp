@@ -1394,47 +1394,29 @@ body.is-splitting {
     background: var(--surface);
 }
 
-.setting h3 {
-    margin: 0 0 4px;
-    font-size: 13.5px;
-    font-weight: 700;
-}
 
-.setting-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
 
-.setting-desc {
-    margin: 0 0 12px;
-    color: var(--muted);
-}
 
-.setting .field-label {
-    margin-top: 12px;
-}
 
 .radio-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 2px;
 }
 
 .radio {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 9px 10px;
-    border-radius: var(--r-sm);
-    box-shadow: inset 0 0 0 1px var(--line);
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--ink);
     cursor: pointer;
 }
 
 .radio:has(input:checked) {
-    background: var(--tint);
-    box-shadow: inset 0 0 0 1px var(--teal-3);
+    color: var(--teal);
+    font-weight: 650;
 }
 
 .radio input {
@@ -1442,29 +1424,9 @@ body.is-splitting {
     accent-color: var(--teal);
 }
 
-.radio strong {
-    display: block;
-    font-weight: 650;
-}
 
-.radio small {
-    display: block;
-    color: var(--muted);
-    font-size: 12px;
-}
 
-#injector-card:not(.is-on) .code-input {
-    opacity: 0.6;
-}
 
-.conflict-note {
-    margin: 0 0 10px;
-    padding: 8px 10px;
-    border-radius: var(--r-sm);
-    background: #fff7e8;
-    color: var(--wait);
-    font-size: 12px;
-}
 
 .switch {
     position: relative;
@@ -1584,44 +1546,113 @@ html.is-popup .app {
     }
 }
 
-/* Riga con checkbox dentro una card di impostazioni (es. "Collega a Tag Assistant"). */
-.check-row {
+
+
+
+
+
+/* ---------- Impostazioni: elenco a righe ---------- */
+.settings-scroll {
+    padding: 0;
+}
+
+.setting {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid var(--line-2);
+    border-radius: 0;
+    background: none;
+}
+
+.setting-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
-    margin-top: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: var(--ink);
+    text-align: left;
     cursor: pointer;
 }
 
-.check-row input {
-    margin: 2px 0 0;
-    flex: 0 0 auto;
-    accent-color: var(--teal);
+.setting-row.static {
+    cursor: default;
 }
 
-.check-row strong {
-    display: block;
+.setting-title {
+    flex: 1;
+    font-size: 13px;
     font-weight: 650;
 }
 
-.check-row small {
-    display: block;
+.setting-value {
     color: var(--muted);
     font-size: 12px;
 }
 
-/* Diagnostica: testo monospaziato, leggibile ma compatto. */
-.diag-output {
-    margin: 0;
-    padding: 10px;
+.chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--faint);
+    transition: transform 0.18s ease;
+}
+
+.disclosure {
+    display: flex;
+    padding: 3px;
+    background: none;
+    border: 0;
     border-radius: var(--r-sm);
-    background: var(--paper);
+    color: var(--faint);
+    cursor: pointer;
+}
+
+.disclosure:hover {
+    background: var(--line-2);
+}
+
+.disclosure:focus-visible {
+    outline: 2px solid var(--teal-3);
+    outline-offset: 1px;
+}
+
+.disclosure[aria-expanded="true"] .chevron,
+.setting-row[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+.setting-body {
+    padding: 0 14px 12px;
+}
+
+.setting-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.mini-select {
+    max-width: 58%;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
     color: var(--ink);
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 320px;
-    overflow: auto;
+    font: inherit;
+    font-size: 12px;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .chevron {
+        transition: none;
+    }
 }

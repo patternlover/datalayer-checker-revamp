@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finto Custom Pixel — due container</title>
+  </head>
+  <body>
+    <p>Pixel con due container: l'injector deve chiedere quale iniettare.</p>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.google_tag_manager = { "GTM-PIXEL1": {}, "GTM-PIXEL2": {} };
+      window.dataLayer.push({ event: "checkout_started", checkout: { totalPrice: { amount: 10 } } });
+    </script>
+  </body>
+</html>

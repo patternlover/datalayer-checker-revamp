@@ -11,6 +11,8 @@
     <p>Finto Custom Pixel (checkout): pusha eventi ogni 1,2 secondi, più un <code>gtm.js</code> che non deve essere rispecchiato.</p>
     <script>
       window.dataLayer = window.dataLayer || [];
+      // Come un pixel vero che carica GTM: da qui l'injector capisce quale container iniettare.
+      window.google_tag_manager = window.google_tag_manager || { "GTM-PIXEL1": {} };
       // Ciclo di vita di un container che gira nel sandbox: il ponte deve scartarlo.
       window.dataLayer.push({ event: "gtm.js", "gtm.start": Date.now(), "gtm.uniqueEventId": 1 });
       window.dataLayer.push({

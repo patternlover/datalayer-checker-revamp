@@ -1,113 +1,48 @@
-import { parseDomains, hostMatches, hostnameOf } from "./util.js";
+// Injector: un container GTM nel frame principale, preso da quello che la pagina già carica.
+// Non c'è più un campo da compilare: il dominio è quello della tab in test, il container è quello
+// che si trova in pagina (top per primo, poi il sandbox del pixel).
+import { hostMatches, hostnameOf } from "./util.js";
 import { state } from "./store.js";
 
 export const injector = {
   on: false,
-  code: "",
+  container: "",
   domains: [],
 };
 
+const PUSH_KEY = "gtmcodepush";
+const CODE_KEY = "gtmcode";
+const DOMAINS_KEY = "gtmDomains";
+
 export async function load() {
-  const stored = await chrome.storage.sync.get(["gtmcodepush", "gtmcode", "gtmDomains", "gtmInjectionPage"]);
+  const stored = await chrome.storage.sync.get([PUSH_KEY, CODE_KEY, DOMAINS_KEY]);
+  injector.container = typeof stored[CODE_KEY] === "string" ? stored[CODE_KEY].trim() : "";
+  injector.domains = Array.isArray(stored[DOMAINS_KEY]) ? stored[DOMAINS_KEY].filter((d) => typeof d === "string") : [];
+  injector.on = stored[PUSH_KEY] === true && !!injector.container && injector.domains.length > 0;
   await chrome.storage.sync.remove(["injectTarget", "mirrorPixel"]);
-
-  let domains = Array.isArray(stored.gtmDomains)
-    ? stored.gtmDomains.filter((domain) => typeof domain === "string" && domain)
-    : [];
-  const legacyPage = typeof stored.gtmInjectionPage === "string" && stored.gtmInjectionPage ? stored.gtmInjectionPage : null;
-  if (!domains.length && legacyPage) {
-    const legacyHost = hostnameOf(legacyPage);
-    if (legacyHost) domains = [legacyHost];
-  }
-
-  injector.code = typeof stored.gtmcode === "string" ? stored.gtmcode : "";
-  injector.domains = domains;
-  injector.on = stored.gtmcodepush === true;
-
-  if (!Array.isArray(stored.gtmDomains) || domains.join(",") !== stored.gtmDomains.join(",")) {
-    await chrome.storage.sync.set({ gtmDomains: domains });
-  }
-  if (legacyPage) await chrome.storage.sync.remove("gtmInjectionPage");
-  if (injector.on && !injector.domains.length) {
-    injector.on = false;
-    await chrome.storage.sync.set({ gtmcodepush: false });
-  }
 }
 
-export async function saveSettings(fields) {
-  const parsed = parseDomains(fields.domainsRaw);
-  injector.code = fields.code;
-  injector.domains = parsed.list;
-  await chrome.storage.sync.set({ gtmcode: injector.code, gtmDomains: injector.domains });
-
-  let turnedOff = false;
-  if (injector.on && !injector.domains.length) {
-    injector.on = false;
-    turnedOff = true;
-    await chrome.storage.sync.set({ gtmcodepush: false });
-  }
-  if (injector.on) injectIntoActiveTab();
-  return { parsed: parsed, turnedOff: turnedOff };
+// `gtmcode` può contenere un ID, uno snippet completo o JavaScript: qui interessa solo l'ID, perché
+// è quello che serve al selettore.
+function containerIdFrom(value) {
+  const text = typeof value === "string" ? value : "";
+  const match = text.match(/GTM-[A-Z0-9]+/);
+  return match ? match[0] : "";
 }
 
-export async function setOn(on, code) {
-  if (on) {
-    if (!injector.domains.length) return { ok: false, reason: "no-domains" };
-    const snippet = typeof code === "string" ? code : injector.code;
-    if (!snippet.trim()) return { ok: false, reason: "no-code" };
-    injector.code = snippet;
-    injector.on = true;
-    // Lo snippet si salva qui, non solo con "Salva impostazioni": accendere l'injector senza
-    // salvare era il modo più facile per vedere "GTM Injector ON" e nessun container in pagina.
-    await chrome.storage.sync.set({ gtmcodepush: true, gtmDomains: injector.domains, gtmcode: snippet });
-    injectIntoActiveTab();
-    return { ok: true };
-  }
-  injector.on = false;
-  await chrome.storage.sync.set({ gtmcodepush: false });
-  return { ok: true };
-}
-
-// Il frame principale non è sempre frameId 0 (pagine prerenderizzate: vedi background.js):
-// cercare il top vero evita che l'iniezione su una tab già aperta finisca nel vuoto.
-export async function injectIntoActiveTab() {
-  if (state.tabId == null) return;
-  let frameIds = [0];
-  try {
-    const frames = await chrome.webNavigation.getAllFrames({ tabId: state.tabId });
-    const tops = (frames || []).filter((frame) => frame.parentFrameId === -1).map((frame) => frame.frameId);
-    if (tops.length) frameIds = tops;
-  } catch (e) {}
-  chrome.scripting
-    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/gtmcode.js"], world: "MAIN" })
-    .catch(() => {});
-  chrome.scripting
-    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/bridge.js"] })
-    .catch(() => {});
-}
-
-// Il container non si fa scrivere a mano: si legge dalla pagina. Sulla stessa origine il tema (o il
-// pixel) ha già `google_tag_manager` popolato, quindi il nome del container è un dato che c'è.
-export async function autoConfigure(tabId) {
-  if (tabId == null) return { ok: false, reason: "no-tab" };
-
-  let tab = null;
-  try {
-    tab = await chrome.tabs.get(tabId);
-  } catch (error) {
-    return { ok: false, reason: "no-tab" };
-  }
-  const host = hostnameOf((tab && tab.url) || "");
-  if (!host) return { ok: false, reason: "no-host" };
-
+// Legge i container presenti in pagina: prima il frame principale, poi i sandbox del pixel.
+export async function containersFor(tabId) {
+  if (tabId == null) return [];
   let frames = [];
   try {
     frames = await chrome.webNavigation.getAllFrames({ tabId: tabId });
   } catch (error) {}
+  const ordered = (frames || [])
+    .filter((f) => f.documentLifecycle !== "prerender")
+    .slice()
+    .sort((a, b) => (a.parentFrameId === -1 ? -1 : b.parentFrameId === -1 ? 1 : 0));
 
-  // Si guarda prima il frame principale, poi i sandbox: sul checkout il container vive nel pixel.
-  const ordered = (frames || []).slice().sort((a, b) => (a.parentFrameId === -1 ? -1 : b.parentFrameId === -1 ? 1 : 0));
-  let found = null;
+  const found = [];
   for (const frame of ordered) {
     try {
       const [result] = await chrome.scripting.executeScript({
@@ -124,53 +59,103 @@ export async function autoConfigure(tabId) {
         },
       });
       const ids = (result && result.result) || [];
-      if (ids.length) {
-        found = ids[0];
-        break;
-      }
+      const frameKind = frame.parentFrameId === -1 ? "top" : "pixel";
+      ids.forEach((id) => {
+        if (!found.some((f) => f.id === id)) found.push({ id: id, frame: frameKind });
+      });
     } catch (error) {}
   }
+  return found;
+}
 
-  if (!found) return { ok: false, reason: "no-container", host: host };
-
-  // Un click accende tutto quello che serve al debug: iniezione, segnale per Tag Assistant e ponte.
+async function save(container, host) {
+  injector.container = container;
   injector.domains = [host];
-  injector.code = found;
   injector.on = true;
-  await chrome.storage.sync.set({
-    gtmDomains: [host],
-    gtmcode: found,
-    gtmcodepush: true,
-    injectorTA: true,
-    pixelmirror: true,
-    pixelmirrorScope: "solo-checkout",
-  });
+  await chrome.storage.sync.set({ [PUSH_KEY]: true, [CODE_KEY]: container, [DOMAINS_KEY]: [host] });
   injectIntoActiveTab();
-  return { ok: true, id: found, host: host };
+}
+
+export async function setOn(on, options = {}) {
+  if (!on) {
+    injector.on = false;
+    await chrome.storage.sync.set({ [PUSH_KEY]: false });
+    return { ok: true };
+  }
+  const tabId = options.tabId;
+  if (tabId == null) return { ok: false, reason: "no-tab" };
+  let host = null;
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    host = hostnameOf((tab && tab.url) || "");
+  } catch (error) {}
+  if (!host) return { ok: false, reason: "no-tab" };
+
+  // Se un container è già stato scelto, si usa quello; altrimenti si legge dalla pagina.
+  let chosen = containerIdFrom(injector.container);
+  if (!chosen) {
+    const found = await containersFor(tabId);
+    if (!found.length) return { ok: false, reason: "no-container" };
+    if (found.length > 1) return { ok: false, reason: "choose", containers: found };
+    chosen = found[0].id;
+  }
+  await save(chosen, host);
+  return { ok: true, id: chosen, host: host };
+}
+
+export async function chooseContainer(container) {
+  const id = containerIdFrom(container);
+  if (!id) return { ok: false };
+  const host = (await hostOfActiveTab()) || injector.domains[0] || null;
+  if (!host) return { ok: false, reason: "no-tab" };
+  await save(id, host);
+  return { ok: true, id: id, host: host };
+}
+
+// Il dominio è quello della tab in test: dopo un `storage.clear()` non è più in memoria, e senza
+// questo la scelta del container non aveva nulla su cui salvarsi.
+async function hostOfActiveTab() {
+  if (state.tabId == null) return null;
+  try {
+    const tab = await chrome.tabs.get(state.tabId);
+    return hostnameOf((tab && tab.url) || "");
+  } catch (error) {
+    return null;
+  }
+}
+
+// Il frame principale non è sempre frameId 0 (pagine prerenderizzate: vedi background.js).
+export async function injectIntoActiveTab() {
+  if (state.tabId == null) return;
+  let frameIds = [0];
+  try {
+    const frames = await chrome.webNavigation.getAllFrames({ tabId: state.tabId });
+    const tops = (frames || []).filter((frame) => frame.parentFrameId === -1).map((frame) => frame.frameId);
+    if (tops.length) frameIds = tops;
+  } catch (error) {}
+  chrome.scripting
+    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/gtmcode.js"], world: "MAIN" })
+    .catch(() => {});
+  chrome.scripting
+    .executeScript({ target: { tabId: state.tabId, frameIds: frameIds }, files: ["scripts/bridge.js"] })
+    .catch(() => {});
 }
 
 export function updateChip(chipEl) {
+  if (!chipEl) return;
   const on = injector.on;
   const inDomain = on && hostMatches(state.tabHost, injector.domains);
-  const injected = !!(state.session && state.session.gtmInjected);
-
   chipEl.classList.remove("chip-on", "chip-off", "chip-warn");
-  // Visibile solo con l'injector acceso: da spento non serve ricordarlo nell'header.
   chipEl.classList.toggle("is-hidden", !on);
   if (!on) return;
-  if (!injector.domains.length) {
-    chipEl.textContent = "GTM Injector ON · nessun dominio";
-    chipEl.classList.add("chip-warn");
-    chipEl.title = "Aggiungi almeno un dominio nelle impostazioni";
-    return;
-  }
   if (!inDomain) {
-    chipEl.textContent = "GTM Injector ON · fuori dominio";
+    chipEl.textContent = "Injector · fuori dominio";
     chipEl.classList.add("chip-warn");
-    chipEl.title = "Injection attiva su: " + injector.domains.join(", ");
+    chipEl.title = "Attivo su: " + injector.domains.join(", ");
     return;
   }
-  chipEl.textContent = injected ? "GTM Injector ON ✓" : "GTM Injector ON";
-  chipEl.classList.add("chip-on");
-  chipEl.title = injected ? "GTM iniettato su questa pagina" : "Injection attiva su " + state.tabHost;
+  const injected = !!(state.session && state.session.gtmInjected);
+  chipEl.textContent = injected ? "Injector ✓" : "Injector";
+  chipEl.classList.add(injected ? "chip-on" : "chip-warn");
+  chipEl.title = injector.container ? "Container " + injector.container : "";
 }

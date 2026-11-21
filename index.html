@@ -130,79 +130,71 @@
 
       <main id="settings-view" class="view is-hidden">
         <div class="settings-scroll">
-          <h2 class="view-title">Impostazioni</h2>
-          <section class="setting" id="uimode-card">
-            <h3>Apertura</h3>
-            <p class="setting-desc">Cosa succede quando clicchi l'icona dell'estensione.</p>
-            <div class="radio-list">
-              <label class="radio"><input type="radio" name="uimode" value="popup" /><span><strong>Popup</strong><small>Il riquadro si apre sotto l'icona e si chiude cliccando altrove. È la scelta consigliata.</small></span></label>
-              <label class="radio"><input type="radio" name="uimode" value="window" /><span><strong>Finestra separata</strong><small>Resta aperta mentre navighi e lavori su altre tab, finché non la chiudi.</small></span></label>
-              <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span><strong>Pannello laterale</strong><small>Dentro la finestra del browser, accanto alla pagina. Solo Chrome: dove il pannello non esiste (Arc) l'icona apre la finestra.</small></span></label>
+          <section class="setting">
+            <button class="setting-row" type="button" id="uimode-row" aria-expanded="false" aria-controls="uimode-body">
+              <span class="setting-title">Apertura</span>
+              <span class="setting-value" id="uimode-value">Popup</span>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            <div class="setting-body" id="uimode-body" hidden>
+              <div class="radio-list">
+                <label class="radio"><input type="radio" name="uimode" value="popup" /><span>Popup</span></label>
+                <label class="radio" id="uimode-sidepanel"><input type="radio" name="uimode" value="sidepanel" /><span>Pannello laterale</span></label>
+                <label class="radio"><input type="radio" name="uimode" value="tab" /><span>Nuova tab</span></label>
+              </div>
             </div>
-            <p id="uimode-note" class="field-hint is-hidden"></p>
-            <button id="uimode-reset" class="btn btn-quiet is-hidden" type="button">Torna al popup</button>
           </section>
 
-          <section class="setting" id="injector-card">
-            <div class="setting-head">
-              <h3>GTM Injector</h3>
-              <label class="switch" title="Attiva o disattiva l'injection">
+          <section class="setting">
+            <div class="setting-row static">
+              <span class="setting-title">GTM Injector</span>
+              <label class="switch" title="Carica il container nella pagina">
                 <input type="checkbox" id="injector-toggle" />
                 <span class="slider"></span>
               </label>
+              <button class="disclosure" type="button" id="injector-row" aria-expanded="false" aria-controls="injector-body" aria-label="Impostazioni avanzate del container">
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
             </div>
-            <p class="setting-desc">Carica un container GTM nella pagina, solo sui domini indicati. Disattivalo a fine debug.</p>
-            <button id="injector-autoconfig" class="btn btn-quiet autoconfig" type="button">Prendi il container da questa pagina</button>
-            <p class="field-hint">Legge il container già presente nella tab, compila dominio e snippet, e accende Injector, Tag Assistant e ponte in un colpo.</p>
-            <p id="container-conflict" class="conflict-note is-hidden"></p>
-            <p id="injector-invalid" class="conflict-note is-hidden"></p>
-            <label class="field-label" for="gtm-domains">Domini</label>
-            <input id="gtm-domains" class="text-input" type="text" placeholder="example.com, shop.altro.com" autocomplete="off" spellcheck="false" />
-            <p class="field-hint">Sottodomini inclusi.</p>
-            <label class="field-label" for="gtm-code">Snippet del container</label>
-            <textarea id="gtm-code" class="text-input code-input" rows="6" spellcheck="false" placeholder="<!-- Google Tag Manager --> …"></textarea>
-            <label class="check-row">
-              <input type="checkbox" id="injector-ta" checked />
-              <span>
-                <strong>Collega a Tag Assistant</strong>
-                <small>Fa entrare in debug il container iniettato: senza, dove il container non c'era (il checkout) la preview non lo vede e resta vuota.</small>
-              </span>
-            </label>
+            <div class="setting-body" id="injector-body" hidden>
+              <div class="setting-line">
+                <span>Container</span>
+                <select id="injector-container" class="mini-select" aria-label="Container da iniettare"></select>
+              </div>
+              <div class="setting-line">
+                <span>Collega a Tag Assistant</span>
+                <label class="switch" title="Il container iniettato si dichiara in debug">
+                  <input type="checkbox" id="injector-ta" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
           </section>
 
-          <section class="setting" id="mirror-card">
-            <div class="setting-head">
-              <h3>Rispecchia pixel sul Top</h3>
-              <label class="switch" title="Ripusha nel dataLayer della pagina gli eventi del Custom Pixel">
+          <section class="setting">
+            <div class="setting-row static">
+              <span class="setting-title">Rispecchia pixel sul Top</span>
+              <label class="switch" title="Gli eventi del pixel arrivano nel dataLayer della pagina">
                 <input type="checkbox" id="mirror-toggle" />
                 <span class="slider"></span>
               </label>
+              <button class="disclosure" type="button" id="mirror-row" aria-expanded="false" aria-controls="mirror-body" aria-label="Impostazioni del ponte">
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
             </div>
-            <p class="setting-desc">
-              Gli eventi del checkout nascono nel sandbox del Custom Pixel: il dataLayer della pagina non li vede mai,
-              quindi in preview non compaiono. Con questa opzione arrivano nel dataLayer del Top con lo stesso nome e lo
-              stesso payload, e Tag Assistant li mostra. Per vederli serve un container nel Top: quello del campo qui sopra.
-            </p>
-            <p id="mirror-note" class="conflict-note is-hidden"></p>
-            <label class="field-label" for="mirror-scope">Eventi da rispecchiare</label>
-            <select id="mirror-scope" class="text-input">
-              <option value="solo-checkout">Solo checkout e ordini</option>
-              <option value="sempre">Tutte le pagine</option>
-            </select>
-          </section>
-
-          <section class="setting" id="diag-card">
-            <div class="setting-head">
-              <h3>Stato della pagina</h3>
-              <button id="diag-run" class="btn btn-quiet" type="button">Leggi la pagina</button>
+            <div class="setting-body" id="mirror-body" hidden>
+              <div class="setting-line">
+                <span>Eventi</span>
+                <select id="mirror-scope" class="mini-select" aria-label="Eventi da rispecchiare">
+                  <option value="solo-checkout">Solo checkout e ordini</option>
+                  <option value="sempre">Tutte le pagine</option>
+                </select>
+              </div>
             </div>
-            <p class="setting-desc">Cosa vede l'estensione nella tab in test: container, segnale di debug, canale di Tag Assistant e sandbox del pixel.</p>
-            <pre id="diag-output" class="diag-output">Premi «Leggi la pagina».</pre>
           </section>
         </div>
         <footer class="view-foot">
           <span id="app-version" class="app-version" title="Versione caricata in questo browser"></span>
-          <button id="save-settings" class="btn btn-dark" type="button">Salva impostazioni</button>
         </footer>
       </main>
 

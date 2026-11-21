@@ -21,9 +21,8 @@ Cronologia delle versioni e come tornare indietro: `CHANGELOG.md`.
 ## Partire in 30 secondi
 
 1. Apri il sito in una tab normale, apri il popup, premi **Testa example.com**.
-2. *Impostazioni* → **Prendi il container da questa pagina**: legge il container già presente, accende
-   Injector, Tag Assistant e ponte. È l'unico passo di configurazione: se ti serve il debug del
-   checkout, non c'è altro da compilare.
+2. *Impostazioni* → accendi **GTM Injector**: il container lo legge dalla pagina (se ce n'è più di
+   uno, chiede quale), e accende insieme Tag Assistant e ponte. Non c'è niente da compilare.
 3. Naviga: ogni push del `dataLayer` compare in tempo reale, con un separatore a ogni pagina.
 3. Senza un sito cliente: in `docs/demo/` c'è un finto negozio —
    `python3 -m http.server 8080`, poi `http://localhost:8080` e **Testa localhost**.
@@ -63,11 +62,36 @@ gli eventi raccolti.
 - **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**: il pannello segna quali
   eventi sono già scattati (Top o Pixel, con l'ora) e **Copia UAT** dà il blocco da incollare.
   Vale per sito, sopravvive a refresh e riavvio, `*` è jolly.
+- **GTM Injector** — l'interruttore carica nel frame principale il container che la pagina già
+  usa (letto da `google_tag_manager`, anche dal frame del pixel). Il dominio è quello della tab in
+  test. Con più container in pagina, il triangolino apre la scelta.
+- **Collega a Tag Assistant** — dentro la stessa riga, **acceso di default**: mette l'attributo di
+  debug su `<html>` così il container iniettato si presenta alla preview (`gtm.js` accetta solo
+  `gtm_debug` in query, referrer di `tagassistant.google.com`, cookie `__TAG_ASSISTANT` o
+  quell'attributo; sul checkout esistono solo gli ultimi due).
+- **Rispecchia pixel sul Top** — spento di default. Gli eventi del checkout nascono nel sandbox del
+  Custom Pixel e il `dataLayer` della pagina non li vede: con questo arrivano **identici** nel
+  `dataLayer` del frame principale, dove Tag Assistant li mostra. Il triangolino apre lo scope:
+  *solo checkout e ordini* (default) o *tutte le pagine*. Se il container iniettato gira anche nel
+  pixel, i suoi tag partono due volte — un `purchase` risulterebbe doppio.
+- **Apertura** — **Popup** (default), **Pannello laterale** (solo Chrome), **Nuova tab**.
+  L'interruttore è in *Impostazioni → Apertura*.
+- **Hit dei vendor** — le chiamate di rete che partono dalla pagina, decodificate con i dizionari
+  dei parametri di Omnibug: GA4, Universal Analytics, GTM, Google Ads, Meta, TikTok, LinkedIn,
+  Pinterest, Snapchat, Reddit, Microsoft Ads, Criteo, Hotjar, Clarity. I parametri arrivano divisi
+  in gruppi (Generale, Eventi, E-commerce…): click sul nome per copiare il parametro grezzo, click
+  sul valore per copiare il valore, **cURL** per la richiesta intera col corpo POST. Le hit vicine a
+  un push mostrano `#n` e portano all'evento. Corpo POST compreso (TikTok manda JSON, non query string).
+- **DataLayer vecchi e UA** — funziona anche con i push di una volta: `dataLayer.push(arguments)`
+  e i dataLayer che iniziano con le sole variabili di pagina, senza `event` (righe «Message»,
+  leggibili ma distinte dagli eventi di business).
+- **UAT** — incolla la colonna *DataLayer TO BE* del foglio, **Aggiungi**: il pannello segna quali
+  eventi sono già scattati (Top o Pixel, con l'ora) e **Copia UAT** dà il blocco da incollare.
+  Vale per sito, sopravvive a refresh e riavvio, `*` è jolly.
 - **GTM Injector** — domini + container in *Impostazioni* (snippet completo con il loader di `gtm.js`,
   `<script src>`, solo ID `GTM-XXXX` oppure JavaScript), solo frame principale e solo `https`.
   Il chip nell'header dice se il container è in pagina; un banner ricorda che è attivo
   (**Disattiva** spegne, **×** chiude il banner). Se il container c'è già, l'iniezione si salta.
-- **Prendi il container da questa pagina** — il pulsante che evita la configurazione a mano: legge il container già in pagina (anche dal frame del pixel) e accende Injector, Tag Assistant e ponte.
 - **Collega a Tag Assistant** (nella card dell'Injector, acceso di default) — `gtm.js` entra in
   debug solo con uno di quattro segnali: `gtm_debug` in query, referrer di
   `tagassistant.google.com`, cookie `__TAG_ASSISTANT`, oppure l'attributo
@@ -82,9 +106,6 @@ gli eventi raccolti.
   container nel Top (campo Injector acceso): senza, la preview non ha a cosa agganciarsi e resta
   vuota. Se quel container gira **anche** nel pixel, i suoi tag scattano una seconda volta:
   l'estensione lo dice, non lo impedisce.
-- **Stato della pagina** — *Impostazioni* → **Leggi la pagina**: container presenti, se l'Injector ha iniettato, se il container è in debug, se il canale di Tag Assistant c'è, eventi di checkout e sandbox del pixel. Da qui in poi il primo posto dove guardare.
-- **Apertura** — default **popup** agganciato all'icona; da *Impostazioni → Apertura* si passa a
-  finestra separata (debug lunghi) o pannello laterale (solo su Chrome).
 
 ## Da sapere
 
@@ -94,7 +115,7 @@ gli eventi raccolti.
 - **Cosa esce dal browser** — eventi e sessioni restano in locale. Solo impostazioni, domini e
   snippet stanno in `chrome.storage.sync`, cioè nel tuo account Google: niente è condiviso.
 - **Se l'icona non apre più niente** — con *Apertura → Pannello laterale* su un browser che espone
-  l'API ma non mostra il pannello (Arc), l'estensione apre la finestra separata e lo dice in
+  l'API ma non mostra il pannello (Arc), l'estensione apre la tab e lo dice in
   *Impostazioni*. Da `chrome://extensions` → Dettagli → **Opzioni estensione** si rientra comunque
   nella UI, per rimettere il popup: prima l'unica via era rimuovere e ricaricare l'estensione.
 
